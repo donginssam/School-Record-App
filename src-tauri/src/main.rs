@@ -12,7 +12,11 @@ struct DbState(Mutex<Option<Connection>>);
 /// 새 DB 파일 생성 (프론트에서 save 다이얼로그로 받은 경로를 넘겨줌)
 #[tauri::command]
 fn new_project(path: String, state: State<DbState>) -> Result<(), String> {
-    let conn = db::create_new(std::path::Path::new(&path)).map_err(|e| e.to_string())?;
+    let p = std::path::Path::new(&path);
+    if p.exists() {
+        return Err(format!("이미 파일이 존재합니다: {path}"));
+    }
+    let conn = db::create_new(p).map_err(|e| e.to_string())?;
     *state.0.lock().unwrap() = Some(conn);
     Ok(())
 }

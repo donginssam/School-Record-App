@@ -2,7 +2,7 @@
 -- 기본 테이블
 -- ================================================================
 
-CREATE TABLE Student
+CREATE TABLE IF NOT EXISTS Student
 (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     grade     INTEGER NOT NULL,
@@ -12,14 +12,14 @@ CREATE TABLE Student
     UNIQUE (grade, class_num, number)
 );
 
-CREATE TABLE Area
+CREATE TABLE IF NOT EXISTS Area
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT    NOT NULL,
     byte_limit INTEGER NOT NULL
 );
 
-CREATE TABLE Activity
+CREATE TABLE IF NOT EXISTS Activity
 (
     id   INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL
@@ -29,7 +29,7 @@ CREATE TABLE Activity
 -- 관계 테이블
 -- ================================================================
 
-CREATE TABLE AreaActivity
+CREATE TABLE IF NOT EXISTS AreaActivity
 (
     area_id       INTEGER NOT NULL,
     activity_id   INTEGER NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE AreaActivity
     FOREIGN KEY (activity_id) REFERENCES Activity (id) ON DELETE CASCADE
 );
 
-CREATE TABLE AreaStudent
+CREATE TABLE IF NOT EXISTS AreaStudent
 (
     area_id             INTEGER NOT NULL,
     student_id          INTEGER NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE AreaStudent
     FOREIGN KEY (student_id) REFERENCES Student (id) ON DELETE CASCADE
 );
 
-CREATE TABLE ActivityDisplayOrder
+CREATE TABLE IF NOT EXISTS ActivityDisplayOrder
 (
     area_id       INTEGER NOT NULL,
     student_id    INTEGER NOT NULL,
@@ -60,7 +60,7 @@ CREATE TABLE ActivityDisplayOrder
     FOREIGN KEY (area_id, activity_id) REFERENCES AreaActivity (area_id, activity_id) ON DELETE CASCADE
 );
 
-CREATE TABLE ActivityRecord
+CREATE TABLE IF NOT EXISTS ActivityRecord
 (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     activity_id INTEGER NOT NULL,
@@ -76,7 +76,7 @@ CREATE TABLE ActivityRecord
 -- 이력 및 스냅샷
 -- ================================================================
 
-CREATE TABLE ActivityRecordHistory
+CREATE TABLE IF NOT EXISTS ActivityRecordHistory
 (
     id                 INTEGER PRIMARY KEY AUTOINCREMENT,
     activity_record_id INTEGER NOT NULL,
@@ -86,7 +86,7 @@ CREATE TABLE ActivityRecordHistory
     FOREIGN KEY (activity_record_id) REFERENCES ActivityRecord (id) ON DELETE CASCADE
 );
 
-CREATE TABLE Snapshot
+CREATE TABLE IF NOT EXISTS Snapshot
 (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL,
@@ -99,18 +99,18 @@ CREATE TABLE Snapshot
 -- 인덱스
 -- ================================================================
 
-CREATE INDEX idx_history_record ON ActivityRecordHistory (activity_record_id, changed_at);
-CREATE INDEX idx_record_student ON ActivityRecord (student_id);
-CREATE INDEX idx_areastudent_student ON AreaStudent (student_id);
-CREATE INDEX idx_areaactivity_activity ON AreaActivity (activity_id);
-CREATE INDEX idx_areastudent_order ON AreaStudent (area_id, is_order_customized);
-CREATE INDEX idx_displayorder_areaactivity ON ActivityDisplayOrder (activity_id, area_id);
+CREATE INDEX IF NOT EXISTS idx_history_record ON ActivityRecordHistory (activity_record_id, changed_at);
+CREATE INDEX IF NOT EXISTS idx_record_student ON ActivityRecord (student_id);
+CREATE INDEX IF NOT EXISTS idx_areastudent_student ON AreaStudent (student_id);
+CREATE INDEX IF NOT EXISTS idx_areaactivity_activity ON AreaActivity (activity_id);
+CREATE INDEX IF NOT EXISTS idx_areastudent_order ON AreaStudent (area_id, is_order_customized);
+CREATE INDEX IF NOT EXISTS idx_displayorder_areaactivity ON ActivityDisplayOrder (activity_id, area_id);
 
 -- ================================================================
 -- 트리거
 -- ================================================================
 
-CREATE TRIGGER trg_record_history
+CREATE TRIGGER IF NOT EXISTS trg_record_history
     AFTER UPDATE OF content
     ON ActivityRecord
     FOR EACH ROW
@@ -120,7 +120,7 @@ BEGIN
     VALUES (OLD.id, OLD.content, datetime('now'));
 END;
 
-CREATE TRIGGER trg_display_order_on_activity_add
+CREATE TRIGGER IF NOT EXISTS trg_display_order_on_activity_add
     AFTER INSERT
     ON AreaActivity
     FOR EACH ROW
