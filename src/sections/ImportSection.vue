@@ -11,6 +11,7 @@ const COL_ALIASES = {
   name: ['이름', 'name', '성명', '학생명', '학생이름'],
   activityName: ['활동명', '활동', '분류', 'activity', 'activity_name', 'activityname'],
   activityContent: ['활동내용', '내용', 'content', '기록', '활동기록'],
+  studentId: ['학번', 'studentid', 'student_id'],
 }
 
 const FIELD_LABELS_A = {
@@ -28,6 +29,7 @@ const REQUIRED_B = ['grade', 'classNum', 'number']
 const step = ref(1)
 const previewCollapsed = ref(false)
 const wizardBodyRef = ref(null)
+const idMode = ref('fields') // 'fields' | 'studentId'
 
 watch(step, () => {
   wizardBodyRef.value?.scrollTo({top: 0, behavior: 'smooth'})
@@ -44,7 +46,7 @@ const fileType = ref(null)
 
 const colMap = ref({
   grade: null, classNum: null, number: null, name: null,
-  activityName: null, activityContent: null,
+  activityName: null, activityContent: null, studentId: null,
 })
 
 const activityMatchMap = ref({})
@@ -63,6 +65,11 @@ const canGoNext = computed(() => {
   if (step.value === 2) return fileType.value !== null
   if (step.value === 3) {
     const m = colMap.value
+    if (idMode.value === 'studentId') {
+      if (m.studentId === null) return false
+      if (fileType.value === 'A') return m.activityName !== null && m.activityContent !== null
+      return true
+    }
     const required = fileType.value === 'A' ? REQUIRED_A : REQUIRED_B
     return required.every(f => m[f] !== null)
   }
@@ -82,7 +89,10 @@ const extractedActivities = computed(() => {
     return [...set]
   } else {
     const m = colMap.value
-    const mapped = new Set([m.grade, m.classNum, m.number, m.name].filter(v => v !== null))
+    const identityCols = idMode.value === 'studentId'
+        ? [m.studentId, m.name]
+        : [m.grade, m.classNum, m.number, m.name]
+    const mapped = new Set(identityCols.filter(v => v !== null))
     return rawHeaders.value.filter((_, i) => !mapped.has(i))
   }
 })
@@ -90,10 +100,23 @@ const extractedActivities = computed(() => {
 const activityColIndices = computed(() => {
   if (fileType.value !== 'B') return []
   const m = colMap.value
-  const mapped = new Set([m.grade, m.classNum, m.number, m.name].filter(v => v !== null))
+  const identityCols = idMode.value === 'studentId'
+      ? [m.studentId, m.name]
+      : [m.grade, m.classNum, m.number, m.name]
+  const mapped = new Set(identityCols.filter(v => v !== null))
   return rawHeaders.value
       .map((name, index) => ({name, index}))
       .filter(({index}) => !mapped.has(index))
+})
+
+const studentIdPreviewRows = computed(() => {
+  const col = colMap.value.studentId
+  if (col === null) return []
+  return rawData.value.slice(0, 5).map(row => {
+    const raw = row[col]
+    const parsed = parseStudentId(raw)
+    return parsed ? {raw, ...parsed, error: false} : {raw, grade: '?', classNum: '?', number: '?', error: true}
+  })
 })
 
 // ── 파일 처리 ─────────────────────────────────────────────────
@@ -153,8 +176,18 @@ function processFile(file) {
   reader.readAsArrayBuffer(file)
 }
 
+function parseStudentId(val) {
+  const s = String(val ?? '').trim().replace(/\D/g, '')
+  if (s.length === 5) return {grade: +s[0], classNum: +s.slice(1, 3), number: +s.slice(3, 5)}
+  if (s.length === 6) return {grade: +s[0], classNum: +s.slice(1, 3), number: +s.slice(3, 6)}
+  return null
+}
+
 function autoDetectColumns() {
-  const map = {grade: null, classNum: null, number: null, name: null, activityName: null, activityContent: null}
+  const map = {
+    grade: null, classNum: null, number: null, name: null,
+    activityName: null, activityContent: null, studentId: null,
+  }
   rawHeaders.value.forEach((header, idx) => {
     const h = header.toLowerCase().replace(/\s/g, '')
     for (const [field, aliases] of Object.entries(COL_ALIASES)) {
@@ -164,6 +197,11 @@ function autoDetectColumns() {
     }
   })
   colMap.value = map
+  if (map.studentId !== null && map.grade === null && map.classNum === null && map.number === null) {
+    idMode.value = 'studentId'
+  } else {
+    idMode.value = 'fields'
+  }
 }
 
 // ── 네비게이션 ────────────────────────────────────────────────
@@ -217,34 +255,44 @@ async function doImport() {
     const records = []
     const m = colMap.value
 
+    function resolveIdentity(row) {
+      if (idMode.value === 'studentId') {
+        const p = parseStudentId(row[m.studentId])
+        if (!p) return null
+        return {grade: p.grade, class_num: p.classNum, number: p.number}
+      }
+      const grade = Number(row[m.grade])
+      const class_num = Number(row[m.classNum])
+      const number = Number(row[m.number])
+      if (!grade || !class_num || !number) return null
+      return {grade, class_num, number}
+    }
+
     if (fileType.value === 'A') {
       for (const row of rawData.value) {
-        const grade = Number(row[m.grade])
-        const class_num = Number(row[m.classNum])
-        const number = Number(row[m.number])
+        const identity = resolveIdentity(row)
+        if (!identity) continue
         const actName = String(row[m.activityName] ?? '').trim()
         const content = String(row[m.activityContent] ?? '').trim()
-        if (!grade || !class_num || !number || !actName || !content) continue
+        if (!actName || !content) continue
         const activity_id = finalMap[actName]
         if (!activity_id) continue
         records.push({
-          grade, class_num, number, activity_id, content,
+          ...identity, activity_id, content,
           name: m.name !== null ? (String(row[m.name] ?? '').trim() || null) : null,
         })
       }
     } else {
       for (const row of rawData.value) {
-        const grade = Number(row[m.grade])
-        const class_num = Number(row[m.classNum])
-        const number = Number(row[m.number])
-        if (!grade || !class_num || !number) continue
+        const identity = resolveIdentity(row)
+        if (!identity) continue
         for (const {name: actName, index} of activityColIndices.value) {
           const content = String(row[index] ?? '').trim()
           if (!content) continue
           const activity_id = finalMap[actName]
           if (!activity_id) continue
           records.push({
-            grade, class_num, number, activity_id, content,
+            ...identity, activity_id, content,
             name: m.name !== null ? (String(row[m.name] ?? '').trim() || null) : null,
           })
         }
@@ -271,7 +319,16 @@ function resetWizard() {
   rawHeaders.value = []
   rawData.value = []
   fileType.value = null
-  colMap.value = {grade: null, classNum: null, number: null, name: null, activityName: null, activityContent: null}
+  idMode.value = 'fields'
+  colMap.value = {
+    grade: null,
+    classNum: null,
+    number: null,
+    name: null,
+    activityName: null,
+    activityContent: null,
+    studentId: null
+  }
   activityMatchMap.value = {}
   dbActivities.value = []
   importing.value = false
@@ -458,13 +515,62 @@ function resetWizard() {
         <h3 class="step-title">열 매핑</h3>
         <p class="step-desc">파일의 각 열을 해당 필드에 연결하세요. <span class="required">*</span> 는 필수입니다.</p>
 
+        <!-- 학생 식별 방식 토글 -->
+        <div class="id-mode-section">
+          <span class="id-mode-label">학생 식별 방식</span>
+          <div class="id-mode-buttons">
+            <button
+                class="id-mode-btn"
+                :class="{ 'id-mode-btn--active': idMode === 'fields' }"
+                @click="idMode = 'fields'"
+            >학년 · 반 · 번호
+            </button>
+            <button
+                class="id-mode-btn"
+                :class="{ 'id-mode-btn--active': idMode === 'studentId' }"
+                @click="idMode = 'studentId'"
+            >학번
+            </button>
+          </div>
+        </div>
+
         <div class="col-map-list">
-          <template v-if="fileType === 'A'">
-            <div v-for="field in ['grade','classNum','number','name','activityName','activityContent']" :key="field"
-                 class="col-map-row">
+          <!-- 학번 모드: 단일 열 선택 + 파싱 미리보기 -->
+          <template v-if="idMode === 'studentId'">
+            <div class="col-map-row">
+              <label class="col-map-label">학번 <span class="required">*</span></label>
+              <select class="col-map-select" v-model="colMap['studentId']">
+                <option :value="null">— 선택 안 함 —</option>
+                <option v-for="(h, i) in rawHeaders" :key="i" :value="i">{{ h }}</option>
+              </select>
+            </div>
+            <div v-if="colMap['studentId'] !== null" class="sid-preview">
+              <p class="sid-preview-label">파싱 미리보기 (5자리: ABBCC · 6자리: ABBCCC)</p>
+              <table class="preview-table sid-preview-table">
+                <thead>
+                <tr>
+                  <th>학번 원본</th>
+                  <th>학년</th>
+                  <th>반</th>
+                  <th>번호</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="(r, i) in studentIdPreviewRows" :key="i" :class="{ 'sid-row-error': r.error }">
+                  <td>{{ r.raw }}</td>
+                  <td>{{ r.grade }}</td>
+                  <td>{{ r.classNum }}</td>
+                  <td>{{ r.number }}</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <!-- 필드 직접 지정 모드 -->
+          <template v-else>
+            <div v-for="field in ['grade','classNum','number']" :key="field" class="col-map-row">
               <label class="col-map-label">
-                {{ FIELD_LABELS_A[field] }}
-                <span v-if="REQUIRED_A.includes(field)" class="required">*</span>
+                {{ FIELD_LABELS_A[field] }} <span class="required">*</span>
               </label>
               <select class="col-map-select" v-model="colMap[field]">
                 <option :value="null">— 선택 안 함 —</option>
@@ -472,23 +578,36 @@ function resetWizard() {
               </select>
             </div>
           </template>
-          <template v-else>
-            <div v-for="field in ['grade','classNum','number','name']" :key="field" class="col-map-row">
+
+          <!-- 이름 (공통, 선택) -->
+          <div class="col-map-row">
+            <label class="col-map-label">이름 (선택)</label>
+            <select class="col-map-select" v-model="colMap['name']">
+              <option :value="null">— 선택 안 함 —</option>
+              <option v-for="(h, i) in rawHeaders" :key="i" :value="i">{{ h }}</option>
+            </select>
+          </div>
+
+          <!-- A타입 활동 필드 -->
+          <template v-if="fileType === 'A'">
+            <div v-for="field in ['activityName','activityContent']" :key="field" class="col-map-row">
               <label class="col-map-label">
-                {{ FIELD_LABELS_B[field] }}
-                <span v-if="REQUIRED_B.includes(field)" class="required">*</span>
+                {{ FIELD_LABELS_A[field] }} <span class="required">*</span>
               </label>
               <select class="col-map-select" v-model="colMap[field]">
                 <option :value="null">— 선택 안 함 —</option>
                 <option v-for="(h, i) in rawHeaders" :key="i" :value="i">{{ h }}</option>
               </select>
             </div>
+          </template>
+          <!-- B타입 활동 열 자동 표시 -->
+          <template v-else>
             <div class="col-map-row">
               <label class="col-map-label">활동 열 (자동)</label>
               <div class="activity-cols-preview">
                 <span v-if="extractedActivities.length === 0"
                       class="activity-cols-hint">학생 정보 열을 선택하면 나머지가 활동 열로 지정됩니다.</span>
-                <span v-for="name in extractedActivities" :key="name" class="activity-col-tag">{{ name }}</span>
+                <span v-for="n in extractedActivities" :key="n" class="activity-col-tag">{{ n }}</span>
               </div>
             </div>
           </template>
@@ -934,6 +1053,68 @@ function resetWizard() {
 }
 
 /* Step 3: 열 매핑 */
+.id-mode-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.id-mode-label {
+  font-size: 15px;
+  color: #c8d8f0;
+  white-space: nowrap;
+}
+
+.id-mode-buttons {
+  display: flex;
+  gap: 0;
+  border: 1px solid #1a2035;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.id-mode-btn {
+  padding: 7px 16px;
+  background: none;
+  border: none;
+  color: #5a7aaa;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.id-mode-btn + .id-mode-btn {
+  border-left: 1px solid #1a2035;
+}
+
+.id-mode-btn--active {
+  background: rgba(59, 91, 219, 0.12);
+  color: #7ba8f0;
+}
+
+.sid-preview {
+  margin-top: 4px;
+  padding: 14px 16px;
+  background: #0d1220;
+  border: 1px solid #1a2035;
+  border-radius: 8px;
+}
+
+.sid-preview-label {
+  font-size: 13px;
+  color: #3d5580;
+  margin: 0 0 10px;
+}
+
+.sid-preview-table {
+  width: auto;
+}
+
+.sid-row-error td {
+  color: #f87171;
+}
+
 .col-map-list {
   display: flex;
   flex-direction: column;
