@@ -243,6 +243,7 @@ function isNewGroup(students, index) {
               :key="act.id"
               class="th-activity"
               :class="{ 'th-activity--collapsed': collapsedActivities.has(act.id) }"
+              :style="collapsedActivities.has(act.id) ? { width: '80px', minWidth: '80px', maxWidth: '80px' } : {}"
               @click="toggleActivity(act.id)"
           >{{ collapsedActivities.has(act.id) ? truncateName(act.name) : act.name }}
           </th>
@@ -298,6 +299,7 @@ function isNewGroup(students, index) {
               v-for="act in gridData.activities"
               :key="act.id"
               class="td-cell"
+              :style="collapsedActivities.has(act.id) ? { width: '80px', minWidth: '80px', maxWidth: '80px' } : {}"
               :class="{
                 'td-cell--collapsed': collapsedActivities.has(act.id),
                 'td-cell--saving': getCellSavingState(act.id, student.id) === 'saving',
@@ -455,7 +457,7 @@ function isNewGroup(students, index) {
   font-weight: 600;
   color: #5a7aaa;
   background-color: #080b14;
-  padding: 10px 14px;
+  padding: 10px 10px;
   border-bottom: 1px solid #1a2035;
   white-space: nowrap;
   text-align: left;
@@ -475,14 +477,10 @@ function isNewGroup(students, index) {
 }
 
 .th-activity--collapsed {
-  width: 48px;
-  min-width: 48px;
-  max-width: 48px;
-  text-orientation: mixed;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 3px 3px;
+  padding: 10px 8px;
   color: #3b5bdb;
 }
 
@@ -513,7 +511,7 @@ thead .sticky {
 .grid-table td {
   font-size: 14px;
   color: #c8d8f0;
-  padding: 8px 14px;
+  padding: 6px 10px;
   border-bottom: 1px solid rgba(26, 32, 53, 0.7);
   vertical-align: top;
 }
@@ -524,6 +522,7 @@ thead .sticky {
   max-width: 48px;
   text-align: center;
   color: #7ba3d4;
+  padding: 6px 4px;
 }
 
 .th-grade, .th-class, .th-number {
@@ -531,13 +530,14 @@ thead .sticky {
   min-width: 48px;
   max-width: 48px;
   text-align: center;
+  padding: 8px 4px;
 }
 
 .td-name {
   width: 80px;
   min-width: 80px;
   max-width: 80px;
-  white-space: nowrap;
+  word-break: break-all;
 }
 
 .th-name {
@@ -602,9 +602,6 @@ thead .sticky {
 }
 
 .td-cell--collapsed {
-  width: 48px;
-  min-width: 48px;
-  max-width: 48px;
   padding: 0;
   background-color: rgba(59, 91, 219, 0.04);
 }
