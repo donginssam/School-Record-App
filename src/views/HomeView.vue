@@ -1,9 +1,9 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { invoke } from '@tauri-apps/api/core'
-import { save, open } from '@tauri-apps/plugin-dialog'
-import { useProjectStore } from '../stores/project'
+import {ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {invoke} from '@tauri-apps/api/core'
+import {open, save} from '@tauri-apps/plugin-dialog'
+import {useProjectStore} from '../stores/project'
 
 const router = useRouter()
 const project = useProjectStore()
@@ -131,7 +131,7 @@ const guideSteps = [
 
   <!-- 사용법 모달 -->
   <transition name="modal">
-    <div v-if="showGuide" class="overlay" @click.self="showGuide = false">
+    <div v-if="showGuide" class="overlay">
       <div class="modal">
         <div class="modal-header">
           <div>
