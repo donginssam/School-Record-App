@@ -6,9 +6,11 @@ use std::path::Path;
 pub const SCHEMA_VERSION: u32 = 1;
 
 /// 인덱스 i: 버전 i → i+1 로 올리는 SQL.
-/// 현재는 v0→v1 이 최초 스키마(create_new에서 처리)이므로 비어있다.
-/// 향후 스키마 변경 시: MIGRATIONS.push("ALTER TABLE ...");
-const MIGRATIONS: &[&str] = &[];
+/// [0] v0→v1: 버전 도입 이전 DB를 v1으로 승격. 스키마는 IF NOT EXISTS로 생성되어 있으므로 SQL 없음.
+/// 향후 스키마 변경 시 배열에 SQL 추가: MIGRATIONS[1] = "ALTER TABLE ...";
+const MIGRATIONS: &[&str] = &[
+    "", // v0 → v1
+];
 
 // ── 내부 헬퍼 ────────────────────────────────────────────────
 
@@ -24,7 +26,13 @@ fn set_version(conn: &Connection, version: u32) -> Result<()> {
 /// 각 단계는 트랜잭션으로 감싸져 있어 중간 실패 시 해당 단계만 롤백된다.
 fn migrate(conn: &Connection, from: u32) -> Result<()> {
     for v in from..SCHEMA_VERSION {
-        let sql = MIGRATIONS[v as usize];
+        let idx = v as usize;
+        // 배열 범위 초과 시 rusqlite 오류로 변환 (패닉 방지)
+        let sql = MIGRATIONS.get(idx).copied().ok_or_else(|| {
+            rusqlite::Error::InvalidParameterName(
+                format!("마이그레이션 스크립트 누락: v{v} → v{}", v + 1),
+            )
+        })?;
         conn.execute_batch(&format!(
             "BEGIN;\n{sql}\nPRAGMA user_version = {next};\nCOMMIT;",
             next = v + 1
