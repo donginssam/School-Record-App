@@ -1,30 +1,57 @@
 <script setup>
-import {ref} from 'vue'
-import {AlertCircle, CheckCircle2, Download, FileSpreadsheet, Upload, X} from 'lucide-vue-next'
+import {computed, ref} from 'vue'
+import {AlertCircle, CheckCircle2, Download, Eye, FileSpreadsheet, Upload, X} from 'lucide-vue-next'
 import * as XLSX from 'xlsx'
 import {invoke} from '@tauri-apps/api/core'
 import {save} from '@tauri-apps/plugin-dialog'
-// 샘플 CSV 내용 (src/assets/sample_students.csv 와 동일한 구조)
+
 const SAMPLE_CSV = `학년,반,번호,이름
 3,1,1,홍길동(예시)
 3,1,2,김철수(예시)
 3,2,1,이영희(예시)
 `
 
+// 열 이름 자동 인식 alias 테이블
+const COL_ALIASES = {
+  grade: ['학년', 'grade'],
+  classNum: ['반', 'class', '학급', '반번호', 'classnum', 'class_num'],
+  number: ['번호', 'number', 'num', '번', '출석번호', '순번'],
+  name: ['이름', 'name', '성명', '학생명', '학생이름'],
+}
+
 const emit = defineEmits(['close', 'imported'])
 
-// 파일 드래그 상태
 const dragging = ref(false)
-// 파싱된 행 목록: {grade, classNum, number, name, _error?}
-const parsedRows = ref([])
-const parseError = ref('')
 const fileName = ref('')
+const parseError = ref('')
 const importing = ref(false)
-const importResult = ref(null) // {inserted, total}
+const importResult = ref(null)
+
+// 원본 데이터
+const rawHeaders = ref([])   // string[]
+const rawData = ref([])      // any[][]
+
+// 열 매핑: 필드명 → 열 인덱스(null = 미선택)
+const colMap = ref({grade: null, classNum: null, number: null, name: null})
+
+// 미리보기 행 목록 (매핑 적용 후)
+const parsedRows = ref([])
+const showPreview = ref(false)
 
 const fileInputRef = ref(null)
 
-// 샘플 CSV 다운로드 (OS 저장 다이얼로그)
+const FIELD_LABELS = {grade: '학년', classNum: '반', number: '번호', name: '이름'}
+
+// 모든 필드가 매핑됐는지
+const allMapped = computed(() =>
+    Object.values(colMap.value).every(v => v !== null)
+)
+
+const validRows = computed(() => parsedRows.value.filter(r => !r._error))
+const errorRows = computed(() => parsedRows.value.filter(r => r._error))
+
+// ── 샘플 다운로드 ──────────────────────────────────────────
+
 async function downloadSample() {
   const path = await save({
     title: '샘플 파일 저장',
@@ -34,6 +61,8 @@ async function downloadSample() {
   if (!path) return
   await invoke('write_text_file', {path, content: '\uFEFF' + SAMPLE_CSV})
 }
+
+// ── 파일 처리 ──────────────────────────────────────────────
 
 function onDragOver(e) {
   e.preventDefault()
@@ -61,7 +90,10 @@ function processFile(file) {
   fileName.value = file.name
   parseError.value = ''
   parsedRows.value = []
+  showPreview.value = false
   importResult.value = null
+  rawHeaders.value = []
+  rawData.value = []
 
   const ext = file.name.split('.').pop().toLowerCase()
   if (!['csv', 'xlsx', 'xls'].includes(ext)) {
@@ -76,7 +108,15 @@ function processFile(file) {
       const wb = XLSX.read(data, {type: 'array'})
       const ws = wb.Sheets[wb.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''})
-      parseRows(rows)
+
+      if (rows.length < 2) {
+        parseError.value = '데이터가 없습니다. 헤더 행 포함 최소 2행이 필요합니다.'
+        return
+      }
+
+      rawHeaders.value = rows[0].map(h => String(h ?? '').trim())
+      rawData.value = rows.slice(1)
+      autoDetectColumns()
     } catch (err) {
       parseError.value = '파일을 파싱하는 중 오류가 발생했습니다: ' + err.message
     }
@@ -84,44 +124,62 @@ function processFile(file) {
   reader.readAsArrayBuffer(file)
 }
 
-function parseRows(rows) {
-  if (rows.length < 2) {
-    parseError.value = '데이터가 없습니다. 헤더 행 포함 최소 2행이 필요합니다.'
+// ── 자동 인식 ──────────────────────────────────────────────
+
+function autoDetectColumns() {
+  const map = {grade: null, classNum: null, number: null, name: null}
+  rawHeaders.value.forEach((header, idx) => {
+    const h = header.toLowerCase().replace(/\s/g, '')
+    for (const [field, aliases] of Object.entries(COL_ALIASES)) {
+      if (map[field] === null && aliases.includes(h)) {
+        map[field] = idx
+      }
+    }
+  })
+  colMap.value = map
+}
+
+// ── 매핑 적용 → 미리보기 ──────────────────────────────────
+
+function applyMapping() {
+  if (!allMapped.value) {
+    parseError.value = '모든 열을 선택해주세요.'
     return
   }
+  parseError.value = ''
+  const {grade: gi, classNum: ci, number: ni, name: nmi} = colMap.value
 
-  // 헤더 행 건너뜀 (첫 번째 행)
   const parsed = []
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i]
-    const grade = Number(row[0])
-    const classNum = Number(row[1])
-    const number = Number(row[2])
-    const name = String(row[3] ?? '').trim()
+  rawData.value.forEach((row, i) => {
+    const grade = Number(row[gi])
+    const classNum = Number(row[ci])
+    const number = Number(row[ni])
+    const name = String(row[nmi] ?? '').trim()
 
-    const rowErrors = []
-    if (!grade || isNaN(grade) || grade < 1) rowErrors.push('학년 오류')
-    if (!classNum || isNaN(classNum) || classNum < 1) rowErrors.push('반 오류')
-    if (!number || isNaN(number) || number < 1) rowErrors.push('번호 오류')
-    if (!name) rowErrors.push('이름 없음')
+    // 완전히 빈 행 제거
+    if (!grade && !classNum && !number && !name) return
+
+    const errs = []
+    if (!grade || isNaN(grade) || grade < 1) errs.push('학년 오류')
+    if (!classNum || isNaN(classNum) || classNum < 1) errs.push('반 오류')
+    if (!number || isNaN(number) || number < 1) errs.push('번호 오류')
+    if (!name) errs.push('이름 없음')
 
     parsed.push({
       grade, classNum, number, name,
-      _row: i + 1,
-      _error: rowErrors.length > 0 ? rowErrors.join(', ') : null,
+      _row: i + 2,
+      _error: errs.length > 0 ? errs.join(', ') : null,
     })
-  }
+  })
 
-  // 완전히 빈 행 제거
-  const filtered = parsed.filter(r => !(r.grade === 0 && r.classNum === 0 && r.number === 0 && !r.name))
-  parsedRows.value = filtered
+  parsedRows.value = parsed
+  showPreview.value = true
 }
 
-const validRows = () => parsedRows.value.filter(r => !r._error)
-const errorRows = () => parsedRows.value.filter(r => r._error)
+// ── 가져오기 ──────────────────────────────────────────────
 
 async function doImport() {
-  const rows = validRows()
+  const rows = validRows.value
   if (rows.length === 0) return
 
   importing.value = true
@@ -161,7 +219,7 @@ async function doImport() {
         <!-- 샘플 다운로드 -->
         <div class="sample-section">
           <p class="guide-text">
-            <strong>학년, 반, 번호, 이름</strong> 열 순서로 작성된 CSV 또는 엑셀 파일을 업로드하세요.
+            학생 명단 CSV 또는 엑셀 파일을 업로드하세요. 열 순서는 자유롭게 작성해도 됩니다.
           </p>
           <button class="btn-sample" @click="downloadSample">
             <Download :size="14"/>
@@ -190,10 +248,51 @@ async function doImport() {
             파일을 여기에 드래그하거나 <span class="drop-link">파일 선택</span>
           </p>
           <p class="drop-hint">CSV, XLSX, XLS 지원</p>
-          <p v-if="fileName" class="drop-filename">{{ fileName }}</p>
+          <p v-if="fileName" class="drop-filename">📄 {{ fileName }}</p>
         </div>
 
-        <!-- 파싱 오류 -->
+        <!-- 열 매핑 패널 (파일 업로드 후 항상 표시) -->
+        <template v-if="rawHeaders.length > 0 && !importResult">
+          <div class="mapping-panel">
+            <p class="mapping-title">열 매핑 확인</p>
+            <p class="mapping-desc">자동으로 인식한 결과입니다. 잘못된 경우 직접 수정하세요.</p>
+            <div class="mapping-grid">
+              <div
+                  v-for="(label, field) in FIELD_LABELS"
+                  :key="field"
+                  class="mapping-row"
+              >
+                <span class="mapping-label">{{ label }}</span>
+                <select
+                    class="mapping-select"
+                    :class="colMap[field] === null ? 'mapping-select--empty' : 'mapping-select--set'"
+                    :value="colMap[field] ?? ''"
+                    @change="colMap[field] = $event.target.value === '' ? null : Number($event.target.value)"
+                >
+                  <option value="">— 선택 안 됨 —</option>
+                  <option
+                      v-for="(header, idx) in rawHeaders"
+                      :key="idx"
+                      :value="idx"
+                  >{{ header || `(${idx + 1}번째 열)` }}
+                  </option>
+                </select>
+                <span v-if="colMap[field] !== null" class="mapping-badge mapping-badge--ok">자동</span>
+                <span v-else class="mapping-badge mapping-badge--empty">미선택</span>
+              </div>
+            </div>
+            <button
+                class="btn-preview"
+                :disabled="!allMapped"
+                @click="applyMapping"
+            >
+              <Eye :size="14"/>
+              미리보기
+            </button>
+          </div>
+        </template>
+
+        <!-- 오류 -->
         <div v-if="parseError" class="alert alert--error">
           <AlertCircle :size="15"/>
           {{ parseError }}
@@ -208,13 +307,13 @@ async function doImport() {
           </span>
         </div>
 
-        <!-- 미리보기 -->
-        <template v-if="parsedRows.length > 0 && !importResult">
+        <!-- 미리보기 테이블 -->
+        <template v-if="showPreview && !importResult">
           <div class="preview-header">
             <span class="preview-count">
               총 {{ parsedRows.length }}행
-              <span v-if="errorRows().length > 0" class="error-count">
-                (오류 {{ errorRows().length }}행 제외)
+              <span v-if="errorRows.length > 0" class="error-count">
+                (오류 {{ errorRows.length }}행 제외)
               </span>
             </span>
           </div>
@@ -257,11 +356,11 @@ async function doImport() {
         <button class="btn-cancel" @click="emit('close')">닫기</button>
         <button
             class="btn-import"
-            :disabled="validRows().length === 0 || importing || !!importResult"
+            :disabled="!showPreview || validRows.length === 0 || importing || !!importResult"
             @click="doImport"
         >
           <Upload :size="15"/>
-          {{ importing ? '가져오는 중...' : `${validRows().length}명 가져오기` }}
+          {{ importing ? '가져오는 중...' : `${showPreview ? validRows.length : 0}명 가져오기` }}
         </button>
       </div>
     </div>
@@ -360,10 +459,6 @@ async function doImport() {
   line-height: 1.6;
 }
 
-.guide-text strong {
-  color: #c8d8f0;
-}
-
 .btn-sample {
   display: flex;
   align-items: center;
@@ -388,7 +483,7 @@ async function doImport() {
 .drop-zone {
   border: 2px dashed #1a2035;
   border-radius: 14px;
-  padding: 32px 24px;
+  padding: 28px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -429,6 +524,120 @@ async function doImport() {
   color: #93c5fd;
   margin: 4px 0 0;
   font-weight: 500;
+}
+
+/* 열 매핑 패널 */
+.mapping-panel {
+  background-color: rgba(59, 91, 219, 0.05);
+  border: 1px solid rgba(59, 91, 219, 0.2);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mapping-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #93afd4;
+  margin: 0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mapping-desc {
+  font-size: 14px;
+  color: #5a7aaa;
+  margin: -6px 0 0;
+}
+
+.mapping-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mapping-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mapping-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #c8d8f0;
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.mapping-select {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #1a2035;
+  background-color: #080b14;
+  color: #e2e8f0;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.mapping-select:focus {
+  border-color: rgba(59, 91, 219, 0.5);
+}
+
+.mapping-select--set {
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.mapping-select--empty {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.mapping-badge {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.mapping-badge--ok {
+  color: #34d399;
+  background-color: rgba(52, 211, 153, 0.1);
+}
+
+.mapping-badge--empty {
+  color: #fbbf24;
+  background-color: rgba(251, 191, 36, 0.1);
+}
+
+.btn-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-end;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(59, 91, 219, 0.3);
+  background: rgba(59, 91, 219, 0.1);
+  color: #7ba8f0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btn-preview:hover:not(:disabled) {
+  background: rgba(59, 91, 219, 0.18);
+}
+
+.btn-preview:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* 알림 */
@@ -478,7 +687,7 @@ async function doImport() {
   border: 1px solid #1a2035;
   border-radius: 10px;
   overflow: hidden;
-  max-height: 240px;
+  max-height: 220px;
   overflow-y: auto;
 }
 
