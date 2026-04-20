@@ -445,8 +445,8 @@ function isNewGroup(students, index) {
 }
 
 .th-activity {
-  min-width: 220px;
-  max-width: 320px;
+  width: 320px;
+  min-width: 280px;
 }
 
 /* sticky 열 */
@@ -547,8 +547,8 @@ thead .sticky {
 /* 셀 */
 .td-cell {
   padding: 6px 8px;
-  min-width: 220px;
-  max-width: 320px;
+  width: 320px;
+  min-width: 280px;
   position: relative;
 }
 
