@@ -33,7 +33,7 @@ onMounted(async () => {
     const win = getCurrentWindow()
     await win.setResizable(true)
     await win.setMinSize(new LogicalSize(900, 600))
-    await win.setSize(new LogicalSize(1280, 800))
+    await win.setSize(new LogicalSize(1280, 720))
     await win.center()
   } catch (e) {
     console.warn('창 리사이즈 실패:', e)
