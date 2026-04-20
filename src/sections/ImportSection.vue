@@ -1,5 +1,5 @@
 <script setup>
-import {computed, ref} from 'vue'
+import {computed, ref, watch} from 'vue'
 import {invoke} from '@tauri-apps/api/core'
 import {ArrowLeft, ArrowRight, FileSpreadsheet} from 'lucide-vue-next'
 import * as XLSX from 'xlsx'
@@ -26,6 +26,12 @@ const REQUIRED_B = ['grade', 'classNum', 'number']
 // ── 상태 ──────────────────────────────────────────────────────
 
 const step = ref(1)
+const previewCollapsed = ref(false)
+const wizardBodyRef = ref(null)
+
+watch(step, () => {
+  wizardBodyRef.value?.scrollTo({top: 0, behavior: 'smooth'})
+})
 const dragging = ref(false)
 const fileName = ref('')
 const parseError = ref('')
@@ -291,7 +297,7 @@ function resetWizard() {
     </div>
 
     <!-- 본문 -->
-    <div class="wizard-body">
+    <div class="wizard-body" ref="wizardBodyRef">
 
       <!-- Step 1: 파일 업로드 -->
       <div v-if="step === 1" class="step-content">
@@ -561,6 +567,28 @@ function resetWizard() {
         </div>
       </div>
 
+      <!-- 파일 미리보기 (Step 2 이후 하단 표시) -->
+      <div v-if="step > 1 && rawHeaders.length > 0" class="persistent-preview">
+        <div class="persistent-preview-header" @click="previewCollapsed = !previewCollapsed">
+          <span class="persistent-preview-label">{{ fileName }} · {{ rawData.length }}행</span>
+          <span class="persistent-preview-toggle">{{ previewCollapsed ? '펼치기 ▾' : '접기 ▴' }}</span>
+        </div>
+        <div v-if="!previewCollapsed" class="preview-table-wrap">
+          <table class="preview-table">
+            <thead>
+            <tr>
+              <th v-for="h in rawHeaders" :key="h">{{ h }}</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="(row, i) in previewRows" :key="i">
+              <td v-for="(cell, j) in row" :key="j">{{ cell }}</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
     <!-- 하단 네비게이션 -->
@@ -654,7 +682,6 @@ function resetWizard() {
 }
 
 .step-content {
-  max-width: 860px;
 }
 
 .step-title {
@@ -685,6 +712,40 @@ function resetWizard() {
   font-size: 15px;
   color: #5a7aaa;
   margin: 0;
+}
+
+/* 단계 하단 미리보기 */
+.persistent-preview {
+  border: 1px solid #1a2035;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 40px;
+  margin-bottom: 8px;
+}
+
+.persistent-preview .preview-table-wrap {
+  border: none;
+  border-radius: 0;
+}
+
+.persistent-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  background: #0d1220;
+  cursor: pointer;
+  user-select: none;
+}
+
+.persistent-preview-label {
+  font-size: 14px;
+  color: #5a7aaa;
+}
+
+.persistent-preview-toggle {
+  font-size: 13px;
+  color: #3d5580;
 }
 
 /* Step 1: 드롭존 */
@@ -869,7 +930,6 @@ function resetWizard() {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 520px;
 }
 
 .col-map-row {
@@ -929,7 +989,6 @@ function resetWizard() {
   border: 1px solid #1a2035;
   border-radius: 10px;
   overflow: hidden;
-  max-width: 640px;
 }
 
 .activity-match-header {
@@ -990,7 +1049,6 @@ function resetWizard() {
   border: 1px solid #1a2035;
   border-radius: 10px;
   overflow: hidden;
-  max-width: 480px;
   margin-bottom: 24px;
 }
 
