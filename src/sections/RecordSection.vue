@@ -156,7 +156,7 @@ function isNewGroup(students, index) {
       <div class="toolbar-left">
         <div class="section-wrap">
           <h2 class="section-title">생기부 작성</h2>
-          <p class="section-desc">영역(Area)을 선택하여 생기부를 작성합니다.</p>
+          <p class="section-desc">영역(Area)을 선택하여 학생별 활동 내용을 입력합니다.</p>
         </div>
       </div>
 
