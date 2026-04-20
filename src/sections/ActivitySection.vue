@@ -87,35 +87,37 @@ async function handleDeleted() {
       </button>
     </div>
 
-    <!-- 로딩 -->
-    <div v-if="activityStore.loading" class="state-box">
-      <p class="state-text">불러오는 중...</p>
-    </div>
+    <div class="section-body">
+      <!-- 로딩 -->
+      <div v-if="activityStore.loading" class="state-box">
+        <p class="state-text">불러오는 중...</p>
+      </div>
 
-    <!-- 에러 -->
-    <div v-else-if="activityStore.error" class="state-box state-box--error">
-      <p class="state-text">{{ activityStore.error }}</p>
-    </div>
+      <!-- 에러 -->
+      <div v-else-if="activityStore.error" class="state-box state-box--error">
+        <p class="state-text">{{ activityStore.error }}</p>
+      </div>
 
-    <!-- 빈 상태 -->
-    <div v-else-if="activityStore.activities.length === 0" class="empty-state">
-      <BookOpen :size="40" color="#2a3a58"/>
-      <p class="empty-title">등록된 활동이 없습니다</p>
-      <p class="empty-desc">활동을 추가한 후 영역에 연결하세요.</p>
-      <button class="btn-add" @click="openAddModal">
-        <Plus :size="18"/>
-        첫 활동 추가하기
-      </button>
-    </div>
+      <!-- 빈 상태 -->
+      <div v-else-if="activityStore.activities.length === 0" class="empty-state">
+        <BookOpen :size="40" color="#2a3a58"/>
+        <p class="empty-title">등록된 활동이 없습니다</p>
+        <p class="empty-desc">활동을 추가한 후 영역에 연결하세요.</p>
+        <button class="btn-add" @click="openAddModal">
+          <Plus :size="18"/>
+          첫 활동 추가하기
+        </button>
+      </div>
 
-    <!-- 카드 그리드 -->
-    <div v-else class="card-grid">
-      <ActivityCard
-          v-for="activity in sortedActivities"
-          :key="activity.id"
-          :activity="activity"
-          @edit="openEditModal"
-      />
+      <!-- 카드 그리드 -->
+      <div v-else class="card-grid">
+        <ActivityCard
+            v-for="activity in sortedActivities"
+            :key="activity.id"
+            :activity="activity"
+            @edit="openEditModal"
+        />
+      </div>
     </div>
   </div>
 
@@ -135,10 +137,11 @@ async function handleDeleted() {
 
 <style scoped>
 .section {
-  padding: 36px 40px 48px;
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  overflow: hidden;
   box-sizing: border-box;
-  overflow-y: auto;
 }
 
 /* 헤더 */
@@ -146,8 +149,16 @@ async function handleDeleted() {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 28px;
+  padding: 36px 40px;
+  border-bottom: 1px solid #1a2035;
+  flex-shrink: 0;
   gap: 16px;
+}
+
+.section-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px 48px;
 }
 
 .section-title {

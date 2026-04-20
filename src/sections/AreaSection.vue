@@ -118,36 +118,38 @@ async function handleStudentSaved(studentIds) {
       </button>
     </div>
 
-    <!-- 로딩 -->
-    <div v-if="areaStore.loading" class="state-box">
-      <p class="state-text">불러오는 중...</p>
-    </div>
+    <div class="section-body">
+      <!-- 로딩 -->
+      <div v-if="areaStore.loading" class="state-box">
+        <p class="state-text">불러오는 중...</p>
+      </div>
 
-    <!-- 에러 -->
-    <div v-else-if="areaStore.error" class="state-box state-box--error">
-      <p class="state-text">{{ areaStore.error }}</p>
-    </div>
+      <!-- 에러 -->
+      <div v-else-if="areaStore.error" class="state-box state-box--error">
+        <p class="state-text">{{ areaStore.error }}</p>
+      </div>
 
-    <!-- 빈 상태 -->
-    <div v-else-if="areaStore.areas.length === 0" class="empty-state">
-      <Layers :size="40" color="#2a3a58"/>
-      <p class="empty-title">등록된 영역이 없습니다</p>
-      <p class="empty-desc">영역을 추가하여 학생부 구성을 시작하세요.</p>
-      <button class="btn-add" @click="openAddModal">
-        <Plus :size="18"/>
-        첫 영역 추가하기
-      </button>
-    </div>
+      <!-- 빈 상태 -->
+      <div v-else-if="areaStore.areas.length === 0" class="empty-state">
+        <Layers :size="40" color="#2a3a58"/>
+        <p class="empty-title">등록된 영역이 없습니다</p>
+        <p class="empty-desc">영역을 추가하여 학생부 구성을 시작하세요.</p>
+        <button class="btn-add" @click="openAddModal">
+          <Plus :size="18"/>
+          첫 영역 추가하기
+        </button>
+      </div>
 
-    <!-- 카드 그리드 -->
-    <div v-else class="card-grid">
-      <AreaCard
-          v-for="area in sortedAreas"
-          :key="area.id"
-          :area="area"
-          @edit="openEditModal"
-          @assign-students="openStudentModal"
-      />
+      <!-- 카드 그리드 -->
+      <div v-else class="card-grid">
+        <AreaCard
+            v-for="area in sortedAreas"
+            :key="area.id"
+            :area="area"
+            @edit="openEditModal"
+            @assign-students="openStudentModal"
+        />
+      </div>
     </div>
   </div>
 
@@ -179,10 +181,11 @@ async function handleStudentSaved(studentIds) {
 
 <style scoped>
 .section {
-  padding: 36px 40px 48px;
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  overflow: hidden;
   box-sizing: border-box;
-  overflow-y: auto;
 }
 
 /* 헤더 */
@@ -190,8 +193,16 @@ async function handleStudentSaved(studentIds) {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 28px;
+  padding: 36px 40px;
+  border-bottom: 1px solid #1a2035;
+  flex-shrink: 0;
   gap: 16px;
+}
+
+.section-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px 48px;
 }
 
 .section-title {

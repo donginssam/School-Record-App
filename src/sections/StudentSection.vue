@@ -101,65 +101,67 @@ async function handleDeleted() {
       </div>
     </div>
 
-    <!-- 로딩 -->
-    <div v-if="studentStore.loading" class="state-box">
-      <p class="state-text">불러오는 중...</p>
-    </div>
+    <div class="section-body">
+      <!-- 로딩 -->
+      <div v-if="studentStore.loading" class="state-box">
+        <p class="state-text">불러오는 중...</p>
+      </div>
 
-    <!-- 에러 -->
-    <div v-else-if="studentStore.error" class="state-box state-box--error">
-      <p class="state-text">{{ studentStore.error }}</p>
-    </div>
+      <!-- 에러 -->
+      <div v-else-if="studentStore.error" class="state-box state-box--error">
+        <p class="state-text">{{ studentStore.error }}</p>
+      </div>
 
-    <!-- 빈 상태 -->
-    <div v-else-if="studentStore.students.length === 0" class="empty-state">
-      <Users :size="40" color="#2a3a58"/>
-      <p class="empty-title">등록된 학생이 없습니다</p>
-      <p class="empty-desc">학생을 추가한 후 영역에 배정하세요.</p>
-      <button class="btn-add" @click="openAddModal">
-        <Plus :size="18"/>
-        첫 학생 추가하기
-      </button>
-    </div>
+      <!-- 빈 상태 -->
+      <div v-else-if="studentStore.students.length === 0" class="empty-state">
+        <Users :size="40" color="#2a3a58"/>
+        <p class="empty-title">등록된 학생이 없습니다</p>
+        <p class="empty-desc">학생을 추가한 후 영역에 배정하세요.</p>
+        <button class="btn-add" @click="openAddModal">
+          <Plus :size="18"/>
+          첫 학생 추가하기
+        </button>
+      </div>
 
-    <!-- 학생 테이블 -->
-    <div v-else class="table-wrap">
-      <table class="student-table">
-        <thead>
-        <tr>
-          <th>학년</th>
-          <th>반</th>
-          <th>번호</th>
-          <th>이름</th>
-          <th></th>
-        </tr>
-        </thead>
-        <tbody>
-        <template v-for="group in groupedStudents" :key="`${group.grade}-${group.classNum}`">
-          <tr class="group-header-row">
-            <td colspan="5">
-              {{ group.grade }}학년 {{ group.classNum }}반
-              <span class="group-count">{{ group.students.length }}명</span>
-            </td>
+      <!-- 학생 테이블 -->
+      <div v-else class="table-wrap">
+        <table class="student-table">
+          <thead>
+          <tr>
+            <th>학년</th>
+            <th>반</th>
+            <th>번호</th>
+            <th>이름</th>
+            <th></th>
           </tr>
-          <tr
-              v-for="student in group.students"
-              :key="student.id"
-              class="student-row"
-          >
-            <td>{{ student.grade }}</td>
-            <td>{{ student.class_num }}</td>
-            <td>{{ student.number }}</td>
-            <td>{{ student.name }}</td>
-            <td class="action-cell">
-              <button class="btn-edit" @click="openEditModal(student)">
-                <Pencil :size="14"/>
-              </button>
-            </td>
-          </tr>
-        </template>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+          <template v-for="group in groupedStudents" :key="`${group.grade}-${group.classNum}`">
+            <tr class="group-header-row">
+              <td colspan="5">
+                {{ group.grade }}학년 {{ group.classNum }}반
+                <span class="group-count">{{ group.students.length }}명</span>
+              </td>
+            </tr>
+            <tr
+                v-for="student in group.students"
+                :key="student.id"
+                class="student-row"
+            >
+              <td>{{ student.grade }}</td>
+              <td>{{ student.class_num }}</td>
+              <td>{{ student.number }}</td>
+              <td>{{ student.name }}</td>
+              <td class="action-cell">
+                <button class="btn-edit" @click="openEditModal(student)">
+                  <Pencil :size="14"/>
+                </button>
+              </td>
+            </tr>
+          </template>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -187,18 +189,27 @@ async function handleDeleted() {
 
 <style scoped>
 .section {
-  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  overflow: hidden;
   box-sizing: border-box;
-  overflow-y: auto;
 }
 
 .section-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 28px;
+  padding: 36px 40px;
+  border-bottom: 1px solid #1a2035;
+  flex-shrink: 0;
   gap: 16px;
+}
+
+.section-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px 48px;
 }
 
 .section-title {
