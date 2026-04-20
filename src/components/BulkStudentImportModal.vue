@@ -512,7 +512,7 @@ async function doImport() {
 .split-layout {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .mapping-column {
@@ -527,6 +527,7 @@ async function doImport() {
 
 /* 열 매핑 패널 */
 .mapping-panel {
+  height: 100%;
   background-color: rgba(59, 91, 219, 0.05);
   border: 1px solid rgba(59, 91, 219, 0.2);
   border-radius: 12px;
@@ -646,6 +647,8 @@ async function doImport() {
 
 /* 미리보기 패널 */
 .preview-panel {
+  flex: 1;
+  height: 100%;
   background-color: rgba(59, 91, 219, 0.05);
   border: 1px solid rgba(59, 91, 219, 0.2);
   border-radius: 12px;
