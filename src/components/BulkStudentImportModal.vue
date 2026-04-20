@@ -218,7 +218,8 @@ async function doImport() {
         <!-- 샘플 다운로드 (항상 표시) -->
         <div class="sample-section">
           <p class="guide-text">
-            학생 명단 CSV 또는 엑셀 파일을 업로드하세요. 열 순서는 자유롭게 작성해도 됩니다.
+            <p>학생 명단이 담긴 CSV 또는 엑셀 파일을 업로드해 주세요.</p>
+            <p>파일 내에 '학년, 반, 번호, 이름' 열이 포함되어 있는지 확인해 주세요.</p>
           </p>
           <button class="btn-sample" @click="downloadSample">
             <Download :size="14"/>
