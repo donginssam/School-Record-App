@@ -66,10 +66,10 @@ const parsedRows = computed(() => {
 const validRows = computed(() => parsedRows.value.filter(r => !r._error))
 const errorRows = computed(() => parsedRows.value.filter(r => r._error))
 
-// 우측 패널용: 최대 7행, 매핑 미완료여도 raw값 표시
+// 우측 패널용: 최대 4행, 매핑 미완료여도 raw값 표시
 const livePreviewRows = computed(() => {
   if (rawData.value.length === 0) return []
-  return rawData.value.slice(0, 7).map((row, i) => ({
+  return rawData.value.slice(0, 4).map((row, i) => ({
     _row: i + 2,
     grade: colMap.value.grade !== null ? row[colMap.value.grade] : null,
     classNum: colMap.value.classNum !== null ? row[colMap.value.classNum] : null,
