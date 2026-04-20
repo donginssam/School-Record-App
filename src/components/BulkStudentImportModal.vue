@@ -14,7 +14,7 @@ const SAMPLE_CSV = `학년,반,번호,이름
 const COL_ALIASES = {
   grade: ['학년', 'grade'],
   classNum: ['반', 'class', '학급', '반번호', 'classnum', 'class_num'],
-  number: ['번호', 'number', 'num', '번', '출석번호', '순번'],
+  number: ['번호', 'number', 'num', '번', '출석번호'],
   name: ['이름', 'name', '성명', '학생명', '학생이름'],
 }
 

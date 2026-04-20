@@ -7,9 +7,9 @@ import * as XLSX from 'xlsx'
 const COL_ALIASES = {
   grade: ['학년', 'grade'],
   classNum: ['반', 'class', '학급', '반번호', 'classnum', 'class_num'],
-  number: ['번호', 'number', 'num', '번', '출석번호', '순번'],
+  number: ['번호', 'number', 'num', '번', '출석번호'],
   name: ['이름', 'name', '성명', '학생명', '학생이름'],
-  activityName: ['활동명', '활동', 'activity', 'activity_name', 'activityname'],
+  activityName: ['활동명', '활동', '분류', 'activity', 'activity_name', 'activityname'],
   activityContent: ['활동내용', '내용', 'content', '기록', '활동기록'],
 }
 
