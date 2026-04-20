@@ -1,6 +1,6 @@
 <script setup>
 import {computed, ref} from 'vue'
-import {AlertCircle, CheckCircle2, Download, Eye, FileSpreadsheet, Upload, X} from 'lucide-vue-next'
+import {AlertCircle, CheckCircle2, Download, FileSpreadsheet, Upload, X} from 'lucide-vue-next'
 import * as XLSX from 'xlsx'
 import {invoke} from '@tauri-apps/api/core'
 import {save} from '@tauri-apps/plugin-dialog'
@@ -11,7 +11,6 @@ const SAMPLE_CSV = `학년,반,번호,이름
 3,2,1,이영희(예시)
 `
 
-// 열 이름 자동 인식 alias 테이블
 const COL_ALIASES = {
   grade: ['학년', 'grade'],
   classNum: ['반', 'class', '학급', '반번호', 'classnum', 'class_num'],
@@ -27,30 +26,57 @@ const parseError = ref('')
 const importing = ref(false)
 const importResult = ref(null)
 
-// 원본 데이터
-const rawHeaders = ref([])   // string[]
-const rawData = ref([])      // any[][]
-
-// 열 매핑: 필드명 → 열 인덱스(null = 미선택)
+const rawHeaders = ref([])
+const rawData = ref([])
 const colMap = ref({grade: null, classNum: null, number: null, name: null})
-
-// 미리보기 행 목록 (매핑 적용 후)
-const parsedRows = ref([])
-const showPreview = ref(false)
 
 const fileInputRef = ref(null)
 
 const FIELD_LABELS = {grade: '학년', classNum: '반', number: '번호', name: '이름'}
 
-// 모든 필드가 매핑됐는지
 const allMapped = computed(() =>
     Object.values(colMap.value).every(v => v !== null)
 )
 
+// 전체 파싱 결과 (allMapped일 때만 계산)
+const parsedRows = computed(() => {
+  if (!allMapped.value || rawData.value.length === 0) return []
+  const {grade: gi, classNum: ci, number: ni, name: nmi} = colMap.value
+  const result = []
+  rawData.value.forEach((row, i) => {
+    const grade = Number(row[gi])
+    const classNum = Number(row[ci])
+    const number = Number(row[ni])
+    const name = String(row[nmi] ?? '').trim()
+    if (!grade && !classNum && !number && !name) return
+    const errs = []
+    if (!grade || isNaN(grade) || grade < 1) errs.push('학년 오류')
+    if (!classNum || isNaN(classNum) || classNum < 1) errs.push('반 오류')
+    if (!number || isNaN(number) || number < 1) errs.push('번호 오류')
+    if (!name) errs.push('이름 없음')
+    result.push({
+      grade, classNum, number, name,
+      _row: i + 2,
+      _error: errs.length > 0 ? errs.join(', ') : null,
+    })
+  })
+  return result
+})
+
 const validRows = computed(() => parsedRows.value.filter(r => !r._error))
 const errorRows = computed(() => parsedRows.value.filter(r => r._error))
 
-// ── 샘플 다운로드 ──────────────────────────────────────────
+// 우측 패널용: 최대 7행, 매핑 미완료여도 raw값 표시
+const livePreviewRows = computed(() => {
+  if (rawData.value.length === 0) return []
+  return rawData.value.slice(0, 7).map((row, i) => ({
+    _row: i + 2,
+    grade: colMap.value.grade !== null ? row[colMap.value.grade] : null,
+    classNum: colMap.value.classNum !== null ? row[colMap.value.classNum] : null,
+    number: colMap.value.number !== null ? row[colMap.value.number] : null,
+    name: colMap.value.name !== null ? String(row[colMap.value.name] ?? '') : null,
+  }))
+})
 
 async function downloadSample() {
   const path = await save({
@@ -61,8 +87,6 @@ async function downloadSample() {
   if (!path) return
   await invoke('write_text_file', {path, content: '\uFEFF' + SAMPLE_CSV})
 }
-
-// ── 파일 처리 ──────────────────────────────────────────────
 
 function onDragOver(e) {
   e.preventDefault()
@@ -89,8 +113,6 @@ function onFileChange(e) {
 function processFile(file) {
   fileName.value = file.name
   parseError.value = ''
-  parsedRows.value = []
-  showPreview.value = false
   importResult.value = null
   rawHeaders.value = []
   rawData.value = []
@@ -102,9 +124,9 @@ function processFile(file) {
   }
 
   const reader = new FileReader()
-  reader.onload = (e) => {
+  reader.onload = (ev) => {
     try {
-      const data = new Uint8Array(e.target.result)
+      const data = new Uint8Array(ev.target.result)
       const wb = XLSX.read(data, {type: 'array'})
       const ws = wb.Sheets[wb.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''})
@@ -124,7 +146,14 @@ function processFile(file) {
   reader.readAsArrayBuffer(file)
 }
 
-// ── 자동 인식 ──────────────────────────────────────────────
+function resetFile() {
+  fileName.value = ''
+  rawHeaders.value = []
+  rawData.value = []
+  colMap.value = {grade: null, classNum: null, number: null, name: null}
+  parseError.value = ''
+  importResult.value = null
+}
 
 function autoDetectColumns() {
   const map = {grade: null, classNum: null, number: null, name: null}
@@ -138,45 +167,6 @@ function autoDetectColumns() {
   })
   colMap.value = map
 }
-
-// ── 매핑 적용 → 미리보기 ──────────────────────────────────
-
-function applyMapping() {
-  if (!allMapped.value) {
-    parseError.value = '모든 열을 선택해주세요.'
-    return
-  }
-  parseError.value = ''
-  const {grade: gi, classNum: ci, number: ni, name: nmi} = colMap.value
-
-  const parsed = []
-  rawData.value.forEach((row, i) => {
-    const grade = Number(row[gi])
-    const classNum = Number(row[ci])
-    const number = Number(row[ni])
-    const name = String(row[nmi] ?? '').trim()
-
-    // 완전히 빈 행 제거
-    if (!grade && !classNum && !number && !name) return
-
-    const errs = []
-    if (!grade || isNaN(grade) || grade < 1) errs.push('학년 오류')
-    if (!classNum || isNaN(classNum) || classNum < 1) errs.push('반 오류')
-    if (!number || isNaN(number) || number < 1) errs.push('번호 오류')
-    if (!name) errs.push('이름 없음')
-
-    parsed.push({
-      grade, classNum, number, name,
-      _row: i + 2,
-      _error: errs.length > 0 ? errs.join(', ') : null,
-    })
-  })
-
-  parsedRows.value = parsed
-  showPreview.value = true
-}
-
-// ── 가져오기 ──────────────────────────────────────────────
 
 async function doImport() {
   const rows = validRows.value
@@ -205,6 +195,15 @@ async function doImport() {
   <div class="overlay">
     <div class="modal">
 
+      <!-- 항상 DOM에 존재하는 숨김 파일 입력 -->
+      <input
+          ref="fileInputRef"
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          style="display:none"
+          @change="onFileChange"
+      />
+
       <!-- 헤더 -->
       <div class="modal-header">
         <h2 class="modal-title">학생 일괄 추가</h2>
@@ -216,7 +215,7 @@ async function doImport() {
       <!-- 바디 -->
       <div class="modal-body">
 
-        <!-- 샘플 다운로드 -->
+        <!-- 샘플 다운로드 (항상 표시) -->
         <div class="sample-section">
           <p class="guide-text">
             학생 명단 CSV 또는 엑셀 파일을 업로드하세요. 열 순서는 자유롭게 작성해도 됩니다.
@@ -227,8 +226,9 @@ async function doImport() {
           </button>
         </div>
 
-        <!-- 업로드 영역 -->
+        <!-- 파일 미선택: 드롭존 -->
         <div
+            v-if="!rawHeaders.length"
             class="drop-zone"
             :class="dragging ? 'drop-zone--active' : ''"
             @dragover="onDragOver"
@@ -236,61 +236,91 @@ async function doImport() {
             @drop="onDrop"
             @click="fileInputRef.click()"
         >
-          <input
-              ref="fileInputRef"
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              style="display:none"
-              @change="onFileChange"
-          />
           <FileSpreadsheet :size="32" class="drop-icon"/>
           <p class="drop-text">
             파일을 여기에 드래그하거나 <span class="drop-link">파일 선택</span>
           </p>
           <p class="drop-hint">CSV, XLSX, XLS 지원</p>
-          <p v-if="fileName" class="drop-filename">📄 {{ fileName }}</p>
         </div>
 
-        <!-- 열 매핑 패널 (미리보기 전에만 표시) -->
-        <template v-if="rawHeaders.length > 0 && !importResult && !showPreview">
-          <div class="mapping-panel">
-            <p class="mapping-title">열 매핑 확인</p>
-            <p class="mapping-desc">자동으로 인식한 결과입니다. 잘못된 경우 직접 수정하세요.</p>
-            <div class="mapping-grid">
-              <div
-                  v-for="(label, field) in FIELD_LABELS"
-                  :key="field"
-                  class="mapping-row"
-              >
-                <span class="mapping-label">{{ label }}</span>
-                <select
-                    class="mapping-select"
-                    :class="colMap[field] === null ? 'mapping-select--empty' : 'mapping-select--set'"
-                    :value="colMap[field] ?? ''"
-                    @change="colMap[field] = $event.target.value === '' ? null : Number($event.target.value)"
+        <!-- 파일 선택됨: 2단 레이아웃 -->
+        <div v-else class="split-layout">
+
+          <!-- 좌: 열 매핑 -->
+          <div class="mapping-column">
+            <div class="mapping-panel">
+              <div class="mapping-panel-head">
+                <p class="mapping-title">열 매핑 확인</p>
+                <button class="btn-change-file" @click="resetFile(); fileInputRef.click()">
+                  <FileSpreadsheet :size="13"/>
+                  파일 변경
+                </button>
+              </div>
+              <p class="mapping-desc">📄 {{ fileName }}</p>
+              <div class="mapping-grid">
+                <div
+                    v-for="(label, field) in FIELD_LABELS"
+                    :key="field"
+                    class="mapping-row"
                 >
-                  <option value="">— 선택 안 됨 —</option>
-                  <option
-                      v-for="(header, idx) in rawHeaders"
-                      :key="idx"
-                      :value="idx"
-                  >{{ header || `(${idx + 1}번째 열)` }}
-                  </option>
-                </select>
-                <span v-if="colMap[field] !== null" class="mapping-badge mapping-badge--ok">자동</span>
-                <span v-else class="mapping-badge mapping-badge--empty">미선택</span>
+                  <span class="mapping-label">{{ label }}</span>
+                  <select
+                      class="mapping-select"
+                      :class="colMap[field] === null ? 'mapping-select--empty' : 'mapping-select--set'"
+                      :value="colMap[field] ?? ''"
+                      @change="colMap[field] = $event.target.value === '' ? null : Number($event.target.value)"
+                  >
+                    <option value="">— 선택 안 됨 —</option>
+                    <option
+                        v-for="(header, idx) in rawHeaders"
+                        :key="idx"
+                        :value="idx"
+                    >{{ header || `(${idx + 1}번째 열)` }}
+                    </option>
+                  </select>
+                  <span v-if="colMap[field] !== null" class="mapping-badge mapping-badge--ok">자동</span>
+                  <span v-else class="mapping-badge mapping-badge--empty">미선택</span>
+                </div>
               </div>
             </div>
-            <button
-                class="btn-preview"
-                :disabled="!allMapped"
-                @click="applyMapping"
-            >
-              <Eye :size="14"/>
-              미리보기
-            </button>
           </div>
-        </template>
+
+          <!-- 우: 실시간 미리보기 -->
+          <div class="preview-column">
+            <div class="preview-panel">
+              <p class="preview-panel-title">미리보기</p>
+              <p class="preview-desc">
+                <template v-if="allMapped">
+                  총 {{ parsedRows.length }}행
+                  <span v-if="errorRows.length > 0" class="error-count">(오류 {{ errorRows.length }}행 제외)</span>
+                </template>
+                <template v-else>열 매핑을 완료하면 전체 인원이 표시됩니다.</template>
+              </p>
+              <div class="preview-wrap">
+                <table class="preview-table">
+                  <thead>
+                  <tr>
+                    <th>행</th>
+                    <th>학년</th>
+                    <th>반</th>
+                    <th>번호</th>
+                    <th>이름</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                  <tr v-for="row in livePreviewRows" :key="row._row">
+                    <td class="td-row">{{ row._row }}</td>
+                    <td :class="row.grade === null ? 'td-unmapped' : ''">{{ row.grade ?? '—' }}</td>
+                    <td :class="row.classNum === null ? 'td-unmapped' : ''">{{ row.classNum ?? '—' }}</td>
+                    <td :class="row.number === null ? 'td-unmapped' : ''">{{ row.number ?? '—' }}</td>
+                    <td :class="row.name === null ? 'td-unmapped' : ''">{{ row.name ?? '—' }}</td>
+                  </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- 오류 -->
         <div v-if="parseError" class="alert alert--error">
@@ -307,49 +337,6 @@ async function doImport() {
           </span>
         </div>
 
-        <!-- 미리보기 테이블 -->
-        <template v-if="showPreview && !importResult">
-          <div class="preview-header">
-            <span class="preview-count">
-              총 {{ parsedRows.length }}행
-              <span v-if="errorRows.length > 0" class="error-count">
-                (오류 {{ errorRows.length }}행 제외)
-              </span>
-            </span>
-            <button class="btn-remap" @click="showPreview = false">열 매핑 수정</button>
-          </div>
-          <div class="preview-wrap">
-            <table class="preview-table">
-              <thead>
-              <tr>
-                <th>행</th>
-                <th>학년</th>
-                <th>반</th>
-                <th>번호</th>
-                <th>이름</th>
-                <th>상태</th>
-              </tr>
-              </thead>
-              <tbody>
-              <tr
-                  v-for="row in parsedRows"
-                  :key="row._row"
-                  :class="row._error ? 'row--error' : ''"
-              >
-                <td class="td-row">{{ row._row }}</td>
-                <td>{{ row.grade || '-' }}</td>
-                <td>{{ row.classNum || '-' }}</td>
-                <td>{{ row.number || '-' }}</td>
-                <td>{{ row.name || '-' }}</td>
-                <td class="td-status">
-                  <span v-if="row._error" class="status-error">{{ row._error }}</span>
-                  <span v-else class="status-ok">✓</span>
-                </td>
-              </tr>
-              </tbody>
-            </table>
-          </div>
-        </template>
       </div>
 
       <!-- 푸터 -->
@@ -357,11 +344,11 @@ async function doImport() {
         <button class="btn-cancel" @click="emit('close')">닫기</button>
         <button
             class="btn-import"
-            :disabled="!showPreview || validRows.length === 0 || importing || !!importResult"
+            :disabled="!allMapped || validRows.length === 0 || importing || !!importResult"
             @click="doImport"
         >
           <Upload :size="15"/>
-          {{ importing ? '가져오는 중...' : `${showPreview ? validRows.length : 0}명 가져오기` }}
+          {{ importing ? '가져오는 중...' : `${allMapped ? validRows.length : 0}명 가져오기` }}
         </button>
       </div>
     </div>
@@ -382,7 +369,7 @@ async function doImport() {
 
 .modal {
   width: 100%;
-  max-width: 580px;
+  max-width: 860px;
   max-height: 85vh;
   background-color: #0e1220;
   border: 1px solid #1a2035;
@@ -485,7 +472,7 @@ async function doImport() {
 .drop-zone {
   border: 2px dashed #1a2035;
   border-radius: 14px;
-  padding: 28px 24px;
+  padding: 48px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -521,11 +508,21 @@ async function doImport() {
   margin: 0;
 }
 
-.drop-filename {
-  font-size: 14px;
-  color: #93c5fd;
-  margin: 4px 0 0;
-  font-weight: 500;
+/* 2단 레이아웃 */
+.split-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.mapping-column {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.preview-column {
+  flex: 1;
+  min-width: 0;
 }
 
 /* 열 매핑 패널 */
@@ -537,6 +534,12 @@ async function doImport() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.mapping-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .mapping-title {
@@ -552,6 +555,9 @@ async function doImport() {
   font-size: 14px;
   color: #5a7aaa;
   margin: -6px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mapping-grid {
@@ -563,7 +569,7 @@ async function doImport() {
 .mapping-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .mapping-label {
@@ -576,12 +582,13 @@ async function doImport() {
 
 .mapping-select {
   flex: 1;
-  padding: 7px 10px;
+  min-width: 0;
+  padding: 6px 8px;
   border-radius: 8px;
   border: 1px solid #1a2035;
   background-color: #080b14;
   color: #e2e8f0;
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
   cursor: pointer;
   transition: border-color 0.15s;
@@ -600,11 +607,12 @@ async function doImport() {
 }
 
 .mapping-badge {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 2px 5px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .mapping-badge--ok {
@@ -617,103 +625,59 @@ async function doImport() {
   background-color: rgba(251, 191, 36, 0.1);
 }
 
-.btn-preview {
+.btn-change-file {
   display: flex;
   align-items: center;
-  gap: 6px;
-  align-self: flex-end;
-  padding: 8px 16px;
-  border-radius: 8px;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 7px;
   border: 1px solid rgba(59, 91, 219, 0.3);
-  background: rgba(59, 91, 219, 0.1);
+  background: rgba(59, 91, 219, 0.08);
   color: #7ba8f0;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
   cursor: pointer;
+  white-space: nowrap;
   transition: background-color 0.15s;
 }
 
-.btn-preview:hover:not(:disabled) {
-  background: rgba(59, 91, 219, 0.18);
+.btn-change-file:hover {
+  background: rgba(59, 91, 219, 0.15);
 }
 
-.btn-preview:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* 알림 */
-.alert {
+/* 미리보기 패널 */
+.preview-panel {
+  background-color: rgba(59, 91, 219, 0.05);
+  border: 1px solid rgba(59, 91, 219, 0.2);
+  border-radius: 12px;
+  padding: 16px 18px;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  font-size: 15px;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.alert--error {
-  background-color: rgba(239, 68, 68, 0.07);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
+.preview-panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #93afd4;
+  margin: 0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.alert--success {
-  background-color: rgba(52, 211, 153, 0.07);
-  border: 1px solid rgba(52, 211, 153, 0.25);
-  color: #6ee7b7;
-}
-
-.skip-hint {
+.preview-desc {
+  font-size: 14px;
   color: #5a7aaa;
-  font-size: 14px;
-}
-
-/* 미리보기 */
-.preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.preview-count {
-  font-size: 14px;
-  color: #7ba3d4;
+  margin: -6px 0 0;
 }
 
 .error-count {
   color: #fca5a5;
 }
 
-.btn-remap {
-  font-size: 13px;
-  color: #7ba8f0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
-}
-
-.btn-remap:hover {
-  color: #93c5fd;
-}
-
 .preview-wrap {
   border: 1px solid #1a2035;
   border-radius: 10px;
   overflow: hidden;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.preview-wrap::-webkit-scrollbar {
-  width: 4px;
-}
-
-.preview-wrap::-webkit-scrollbar-thumb {
-  background-color: #1a2035;
-  border-radius: 2px;
 }
 
 .preview-table {
@@ -744,28 +708,40 @@ async function doImport() {
   border-bottom: none;
 }
 
-.row--error td {
-  color: #7ba3d4;
-  background-color: rgba(239, 68, 68, 0.04);
-}
-
 .td-row {
   color: #5a7aaa;
   font-size: 13px;
 }
 
-.td-status {
-  text-align: center;
+.td-unmapped {
+  color: #2a3a58;
 }
 
-.status-ok {
-  color: #34d399;
-  font-size: 13px;
+/* 알림 */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 15px;
 }
 
-.status-error {
-  font-size: 12px;
-  color: #f87171;
+.alert--error {
+  background-color: rgba(239, 68, 68, 0.07);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.alert--success {
+  background-color: rgba(52, 211, 153, 0.07);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  color: #6ee7b7;
+}
+
+.skip-hint {
+  color: #5a7aaa;
+  font-size: 14px;
 }
 
 /* 푸터 */
