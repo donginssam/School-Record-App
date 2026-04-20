@@ -417,7 +417,7 @@ function resetWizard() {
                   <th>반</th>
                   <th>번호</th>
                   <th>이름</th>
-                  <th>자율활동</th>
+                  <th>학급자치회</th>
                   <th>동아리</th>
                 </tr>
                 </thead>
@@ -435,8 +435,16 @@ function resetWizard() {
                   <td>1</td>
                   <td>2</td>
                   <td>김철수</td>
-                  <td>환경부원으로...</td>
+                  <td>환경부장으로...</td>
                   <td>독서 동아리에서...</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>1</td>
+                  <td>3</td>
+                  <td>박영희</td>
+                  <td>부회장으로...</td>
+                  <td>컴퓨터 동아리에서...</td>
                 </tr>
                 </tbody>
               </table>
@@ -568,7 +576,7 @@ function resetWizard() {
       </div>
 
       <!-- 파일 미리보기 (Step 2 이후 하단 표시) -->
-      <div v-if="step > 1 && rawHeaders.length > 0" class="persistent-preview">
+      <div v-if="step > 1 && step < 5 && rawHeaders.length > 0" class="persistent-preview">
         <div class="persistent-preview-header" @click="previewCollapsed = !previewCollapsed">
           <span class="persistent-preview-label">{{ fileName }} · {{ rawData.length }}행</span>
           <span class="persistent-preview-toggle">{{ previewCollapsed ? '펼치기 ▾' : '접기 ▴' }}</span>
