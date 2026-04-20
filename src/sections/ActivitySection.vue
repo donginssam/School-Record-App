@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import {BookOpen, Plus} from 'lucide-vue-next'
 import {invoke} from '@tauri-apps/api/core'
 import {useActivityStore} from '../stores/activity'
@@ -9,6 +9,10 @@ import ActivityModal from '../components/ActivityModal.vue'
 
 const activityStore = useActivityStore()
 const areaStore = useAreaStore()
+
+const sortedActivities = computed(() =>
+    [...activityStore.activities].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+)
 
 // 모달 상태
 const modalVisible = ref(false)
@@ -107,7 +111,7 @@ async function handleDeleted() {
     <!-- 카드 그리드 -->
     <div v-else class="card-grid">
       <ActivityCard
-          v-for="activity in activityStore.activities"
+          v-for="activity in sortedActivities"
           :key="activity.id"
           :activity="activity"
           @edit="openEditModal"

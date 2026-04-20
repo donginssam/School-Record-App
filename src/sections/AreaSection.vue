@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import {Layers, Plus} from 'lucide-vue-next'
 import {invoke} from '@tauri-apps/api/core'
 import {useAreaStore} from '../stores/area'
@@ -12,6 +12,10 @@ import AreaStudentModal from '../components/AreaStudentModal.vue'
 const areaStore = useAreaStore()
 const activityStore = useActivityStore()
 const studentStore = useStudentStore()
+
+const sortedAreas = computed(() =>
+    [...areaStore.areas].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+)
 
 // 영역 편집 모달 상태
 const modalVisible = ref(false)
@@ -138,7 +142,7 @@ async function handleStudentSaved(studentIds) {
     <!-- 카드 그리드 -->
     <div v-else class="card-grid">
       <AreaCard
-          v-for="area in areaStore.areas"
+          v-for="area in sortedAreas"
           :key="area.id"
           :area="area"
           @edit="openEditModal"
