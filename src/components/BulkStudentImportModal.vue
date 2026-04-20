@@ -176,7 +176,7 @@ async function doImport() {
   try {
     const students = rows.map(r => ({
       grade: r.grade,
-      classNum: r.classNum,
+      class_num: r.classNum,
       number: r.number,
       name: r.name,
     }))
