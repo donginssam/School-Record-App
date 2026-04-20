@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "school-record-app",
+        "title": "School-Record-App",
         "width": 580,
         "height": 580,
         "resizable": false,
