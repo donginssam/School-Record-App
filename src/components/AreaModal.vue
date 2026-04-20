@@ -26,7 +26,7 @@ watch(
         selectedIds.value = new Set(a.activities.map(x => x.id))
       } else {
         name.value = ''
-        byteLimit.value = 500
+        byteLimit.value = 1500
         selectedIds.value = new Set()
       }
       error.value = ''
@@ -84,41 +84,59 @@ function handleDelete() {
         </button>
       </div>
 
-      <!-- 폼 -->
+      <!-- 2단 바디 -->
       <div class="modal-body">
-        <div class="field">
-          <label class="field-label">영역 이름 <span class="required">*</span></label>
-          <input
-              v-model="name"
-              class="field-input"
-              placeholder="예: 자율활동"
-              @keydown.enter="submit"
-          />
-        </div>
 
-        <div class="field">
-          <label class="field-label">바이트 수 제한 <span class="required">*</span></label>
-          <div class="input-row">
+        <!-- 좌측: 기본 정보 -->
+        <div class="pane pane-left">
+          <p class="pane-title">기본 정보</p>
+
+          <div class="field">
+            <label class="field-label">영역 이름 <span class="required">*</span></label>
             <input
-                v-model.number="byteLimit"
-                type="number"
-                min="1"
+                v-model="name"
                 class="field-input"
-                placeholder="1500"
+                placeholder="예: 자율활동"
                 @keydown.enter="submit"
             />
-            <span class="input-unit">Bytes</span>
           </div>
-          <p class="field-hint">나이스 기준 최대 입력 가능한 바이트 수를 입력하세요.</p>
+
+          <div class="field">
+            <label class="field-label">바이트 수 제한 <span class="required">*</span></label>
+            <div class="input-row">
+              <input
+                  v-model.number="byteLimit"
+                  type="number"
+                  min="1"
+                  class="field-input"
+                  placeholder="1500"
+                  @keydown.enter="submit"
+              />
+              <span class="input-unit">Bytes</span>
+            </div>
+            <p class="field-hint">나이스 기준 최대 입력 가능한 바이트 수</p>
+          </div>
+
+          <!-- 에러 -->
+          <p v-if="error" class="form-error">{{ error }}</p>
         </div>
 
-        <!-- 활동 연결 -->
-        <div class="field">
-          <label class="field-label">포함할 활동</label>
-          <p v-if="allActivities.length === 0" class="field-hint">
-            등록된 활동이 없습니다. 활동 관리에서 먼저 추가하세요.
+        <!-- 구분선 -->
+        <div class="pane-divider"/>
+
+        <!-- 우측: 활동 선택 -->
+        <div class="pane pane-right">
+          <div class="pane-title-row">
+            <p class="pane-title">포함할 활동</p>
+            <span v-if="allActivities.length > 0" class="selected-count">
+              {{ selectedIds.size }}개 선택
+            </span>
+          </div>
+
+          <p v-if="allActivities.length === 0" class="empty-hint">
+            등록된 활동이 없습니다.<br>활동 관리에서 먼저 추가하세요.
           </p>
-          <div v-else class="chip-wrap">
+          <div v-else class="chip-scroll">
             <button
                 v-for="act in allActivities"
                 :key="act.id"
@@ -130,14 +148,10 @@ function handleDelete() {
             </button>
           </div>
         </div>
-
-        <!-- 에러 -->
-        <p v-if="error" class="form-error">{{ error }}</p>
       </div>
 
       <!-- 푸터 -->
       <div class="modal-footer">
-        <!-- 삭제 버튼 (편집 모드) -->
         <div class="footer-left">
           <template v-if="mode === 'edit'">
             <button
@@ -181,7 +195,7 @@ function handleDelete() {
 
 .modal {
   width: 100%;
-  max-width: 440px;
+  max-width: 760px;
   background-color: #0e1220;
   border: 1px solid #1a2035;
   border-radius: 20px;
@@ -223,14 +237,50 @@ function handleDelete() {
   color: #7ba3d4;
 }
 
-/* 바디 */
+/* 2단 바디 */
 .modal-body {
-  padding: 20px 24px;
+  display: flex;
+  align-items: stretch;
+  padding: 20px 0 4px;
+  min-height: 260px;
+}
+
+.pane {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  flex: 1;
+  padding: 0 24px 16px;
 }
 
+.pane-divider {
+  width: 1px;
+  background-color: #1a2035;
+  flex-shrink: 0;
+  margin: 4px 0 20px;
+}
+
+.pane-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3d5580;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.pane-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.selected-count {
+  font-size: 13px;
+  color: #5a7aaa;
+}
+
+/* 필드 */
 .field {
   display: flex;
   flex-direction: column;
@@ -285,42 +335,9 @@ function handleDelete() {
 }
 
 .field-hint {
-  font-size: 15px;
+  font-size: 13px;
   color: #4a6080;
   margin: 0;
-}
-
-.chip-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.act-chip {
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid #1a2035;
-  background-color: #0b1020;
-  color: #3d5580;
-  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
-}
-
-.act-chip:hover {
-  border-color: #2a3a58;
-  color: #5a7aa0;
-}
-
-.act-chip--on {
-  border-color: rgba(59, 91, 219, 0.4);
-  background-color: rgba(59, 91, 219, 0.15);
-  color: #7ba8f0;
-}
-
-.act-chip--on:hover {
-  background-color: rgba(59, 91, 219, 0.22);
 }
 
 .form-error {
@@ -331,6 +348,65 @@ function handleDelete() {
   border-radius: 8px;
   padding: 10px 14px;
   margin: 0;
+}
+
+/* 우측 패널 */
+.empty-hint {
+  font-size: 15px;
+  color: #2a3a50;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.chip-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 220px;
+  padding-right: 4px;
+}
+
+.chip-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chip-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chip-scroll::-webkit-scrollbar-thumb {
+  background-color: #1a2035;
+  border-radius: 4px;
+}
+
+.act-chip {
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #1a2035;
+  background-color: #0b1020;
+  color: #3d5580;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.act-chip:hover {
+  border-color: #2a3a58;
+  color: #5a7aa0;
+}
+
+.act-chip--on {
+  border-color: rgba(59, 91, 219, 0.45);
+  background-color: rgba(59, 91, 219, 0.15);
+  color: #7ba8f0;
+}
+
+.act-chip--on:hover {
+  background-color: rgba(59, 91, 219, 0.22);
 }
 
 /* 푸터 */
