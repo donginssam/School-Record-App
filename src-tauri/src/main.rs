@@ -166,6 +166,61 @@ fn delete_area(id: i64, state: State<DbState>) -> Result<(), String> {
     Ok(())
 }
 
+// ── Activity 커맨드 ──────────────────────────────────────────
+
+#[tauri::command]
+fn get_activities(state: State<DbState>) -> Result<Vec<ActivityItem>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, name FROM Activity ORDER BY id")
+        .map_err(|e| e.to_string())?;
+
+    let items = stmt
+        .query_map([], |row| {
+            Ok(ActivityItem {
+                id: row.get(0)?,
+                name: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(items)
+}
+
+#[tauri::command]
+fn set_area_activities(
+    area_id: i64,
+    activity_ids: Vec<i64>,
+    state: State<DbState>,
+) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    conn.execute(
+        "DELETE FROM AreaActivity WHERE area_id = ?1",
+        rusqlite::params![area_id],
+    )
+        .map_err(|e| e.to_string())?;
+
+    for (order, act_id) in activity_ids.iter().enumerate() {
+        conn.execute(
+            "INSERT INTO AreaActivity (area_id, activity_id, default_order) VALUES (?1, ?2, ?3)",
+            rusqlite::params![area_id, act_id, (order + 1) as i64],
+        )
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
 // ── 앱 진입점 ────────────────────────────────────────────────
 
 fn main() {
@@ -179,6 +234,8 @@ fn main() {
             create_area,
             update_area,
             delete_area,
+            get_activities,
+            set_area_activities,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

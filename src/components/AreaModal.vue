@@ -5,14 +5,16 @@ import {Trash2, X} from 'lucide-vue-next'
 const props = defineProps({
   mode: {type: String, default: 'add'}, // 'add' | 'edit'
   area: {type: Object, default: null},
+  allActivities: {type: Array, default: () => []},
 })
 
 const emit = defineEmits(['close', 'saved', 'deleted'])
 
 const name = ref('')
-const byteLimit = ref(500)
+const byteLimit = ref(1500)
 const error = ref('')
 const confirmDelete = ref(false)
+const selectedIds = ref(new Set())
 
 // 편집 모드 진입 시 기존 값 채우기
 watch(
@@ -21,9 +23,11 @@ watch(
       if (a) {
         name.value = a.name
         byteLimit.value = a.byte_limit
+        selectedIds.value = new Set(a.activities.map(x => x.id))
       } else {
         name.value = ''
         byteLimit.value = 500
+        selectedIds.value = new Set()
       }
       error.value = ''
       confirmDelete.value = false
@@ -43,9 +47,20 @@ function validate() {
   return true
 }
 
+function toggleActivity(id) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+
 function submit() {
   if (!validate()) return
-  emit('saved', {name: name.value.trim(), byteLimit: Number(byteLimit.value)})
+  emit('saved', {
+    name: name.value.trim(),
+    byteLimit: Number(byteLimit.value),
+    activityIds: [...selectedIds.value],
+  })
 }
 
 function handleDelete() {
@@ -95,6 +110,25 @@ function handleDelete() {
             <span class="input-unit">Bytes</span>
           </div>
           <p class="field-hint">나이스 기준 최대 입력 가능한 바이트 수를 입력하세요.</p>
+        </div>
+
+        <!-- 활동 연결 -->
+        <div class="field">
+          <label class="field-label">포함할 활동</label>
+          <p v-if="allActivities.length === 0" class="field-hint">
+            등록된 활동이 없습니다. 활동 관리에서 먼저 추가하세요.
+          </p>
+          <div v-else class="chip-wrap">
+            <button
+                v-for="act in allActivities"
+                :key="act.id"
+                type="button"
+                class="act-chip"
+                :class="{'act-chip--on': selectedIds.has(act.id)}"
+                @click="toggleActivity(act.id)"
+            >{{ act.name }}
+            </button>
+          </div>
         </div>
 
         <!-- 에러 -->
@@ -254,6 +288,39 @@ function handleDelete() {
   font-size: 15px;
   color: #4a6080;
   margin: 0;
+}
+
+.chip-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.act-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #1a2035;
+  background-color: #0b1020;
+  color: #3d5580;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.act-chip:hover {
+  border-color: #2a3a58;
+  color: #5a7aa0;
+}
+
+.act-chip--on {
+  border-color: rgba(59, 91, 219, 0.4);
+  background-color: rgba(59, 91, 219, 0.15);
+  color: #7ba8f0;
+}
+
+.act-chip--on:hover {
+  background-color: rgba(59, 91, 219, 0.22);
 }
 
 .form-error {

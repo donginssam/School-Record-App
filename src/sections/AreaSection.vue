@@ -1,11 +1,14 @@
 <script setup>
 import {onMounted, ref} from 'vue'
 import {Layers, Plus} from 'lucide-vue-next'
+import {invoke} from '@tauri-apps/api/core'
 import {useAreaStore} from '../stores/area'
+import {useActivityStore} from '../stores/activity'
 import AreaCard from '../components/AreaCard.vue'
 import AreaModal from '../components/AreaModal.vue'
 
 const areaStore = useAreaStore()
+const activityStore = useActivityStore()
 
 // 모달 상태
 const modalVisible = ref(false)
@@ -14,6 +17,7 @@ const selectedArea = ref(null)
 
 onMounted(() => {
   areaStore.fetchAreas()
+  activityStore.fetchActivities()
 })
 
 function openAddModal() {
@@ -33,13 +37,17 @@ function closeModal() {
   selectedArea.value = null
 }
 
-async function handleSaved({name, byteLimit}) {
+async function handleSaved({name, byteLimit, activityIds}) {
   try {
+    let areaId
     if (modalMode.value === 'add') {
-      await areaStore.createArea(name, byteLimit)
+      areaId = await invoke('create_area', {name, byteLimit})
     } else {
-      await areaStore.updateArea(selectedArea.value.id, name, byteLimit)
+      areaId = selectedArea.value.id
+      await invoke('update_area', {id: areaId, name, byteLimit})
     }
+    await invoke('set_area_activities', {areaId, activityIds})
+    await areaStore.fetchAreas()
     closeModal()
   } catch (e) {
     console.error(e)
@@ -109,6 +117,7 @@ async function handleDeleted() {
         v-if="modalVisible"
         :mode="modalMode"
         :area="selectedArea"
+        :all-activities="activityStore.activities"
         @close="closeModal"
         @saved="handleSaved"
         @deleted="handleDeleted"
