@@ -1,0 +1,139 @@
+-- ================================================================
+-- 기본 테이블
+-- ================================================================
+
+CREATE TABLE Student
+(
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    grade     INTEGER NOT NULL,
+    class_num INTEGER NOT NULL,
+    number    INTEGER NOT NULL,
+    name      TEXT    NOT NULL,
+    UNIQUE (grade, class_num, number)
+);
+
+CREATE TABLE Area
+(
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT    NOT NULL,
+    byte_limit INTEGER NOT NULL
+);
+
+CREATE TABLE Activity
+(
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+);
+
+-- ================================================================
+-- 관계 테이블
+-- ================================================================
+
+CREATE TABLE AreaActivity
+(
+    area_id       INTEGER NOT NULL,
+    activity_id   INTEGER NOT NULL,
+    default_order INTEGER NOT NULL,
+    PRIMARY KEY (area_id, activity_id),
+    FOREIGN KEY (area_id) REFERENCES Area (id) ON DELETE CASCADE,
+    FOREIGN KEY (activity_id) REFERENCES Activity (id) ON DELETE CASCADE
+);
+
+CREATE TABLE AreaStudent
+(
+    area_id             INTEGER NOT NULL,
+    student_id          INTEGER NOT NULL,
+    is_order_customized INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (area_id, student_id),
+    FOREIGN KEY (area_id) REFERENCES Area (id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES Student (id) ON DELETE CASCADE
+);
+
+CREATE TABLE ActivityDisplayOrder
+(
+    area_id       INTEGER NOT NULL,
+    student_id    INTEGER NOT NULL,
+    activity_id   INTEGER NOT NULL,
+    display_order INTEGER NOT NULL,
+    PRIMARY KEY (area_id, student_id, activity_id),
+    FOREIGN KEY (area_id, student_id) REFERENCES AreaStudent (area_id, student_id) ON DELETE CASCADE,
+    FOREIGN KEY (area_id, activity_id) REFERENCES AreaActivity (area_id, activity_id) ON DELETE CASCADE
+);
+
+CREATE TABLE ActivityRecord
+(
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    activity_id INTEGER NOT NULL,
+    student_id  INTEGER NOT NULL,
+    content     TEXT    NOT NULL DEFAULT '',
+    updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (activity_id, student_id),
+    FOREIGN KEY (activity_id) REFERENCES Activity (id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES Student (id) ON DELETE CASCADE
+);
+
+-- ================================================================
+-- 이력 및 스냅샷
+-- ================================================================
+
+CREATE TABLE ActivityRecordHistory
+(
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    activity_record_id INTEGER NOT NULL,
+    content            TEXT    NOT NULL,
+    changed_at         TEXT    NOT NULL DEFAULT (datetime('now')),
+    note               TEXT,
+    FOREIGN KEY (activity_record_id) REFERENCES ActivityRecord (id) ON DELETE CASCADE
+);
+
+CREATE TABLE Snapshot
+(
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    description TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    file_name   TEXT NOT NULL
+);
+
+-- ================================================================
+-- 인덱스
+-- ================================================================
+
+CREATE INDEX idx_history_record ON ActivityRecordHistory (activity_record_id, changed_at);
+CREATE INDEX idx_record_student ON ActivityRecord (student_id);
+CREATE INDEX idx_areastudent_student ON AreaStudent (student_id);
+CREATE INDEX idx_areaactivity_activity ON AreaActivity (activity_id);
+CREATE INDEX idx_areastudent_order ON AreaStudent (area_id, is_order_customized);
+CREATE INDEX idx_displayorder_areaactivity ON ActivityDisplayOrder (activity_id, area_id);
+
+-- ================================================================
+-- 트리거
+-- ================================================================
+
+CREATE TRIGGER trg_record_history
+    AFTER UPDATE OF content
+    ON ActivityRecord
+    FOR EACH ROW
+    WHEN OLD.content != NEW.content
+BEGIN
+    INSERT INTO ActivityRecordHistory (activity_record_id, content, changed_at)
+    VALUES (OLD.id, OLD.content, datetime('now'));
+END;
+
+CREATE TRIGGER trg_display_order_on_activity_add
+    AFTER INSERT
+    ON AreaActivity
+    FOR EACH ROW
+BEGIN
+    INSERT INTO ActivityDisplayOrder (area_id, student_id, activity_id, display_order)
+    SELECT NEW.area_id,
+           ars.student_id,
+           NEW.activity_id,
+           COALESCE((SELECT MAX(ado.display_order)
+                     FROM ActivityDisplayOrder ado
+                     WHERE ado.area_id = NEW.area_id
+                       AND ado.student_id = ars.student_id), 0) + 1
+    FROM AreaStudent ars
+    WHERE ars.area_id = NEW.area_id
+      AND ars.is_order_customized = 1;
+END;
