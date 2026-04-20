@@ -47,7 +47,7 @@ const hiddenCount = computed(() =>
 <style scoped>
 .card {
   background-color: #0e1220;
-  border: 1px solid #1a2035;
+  border: 1px solid #1e293b;
   border-radius: 16px;
   padding: 22px;
   cursor: pointer;
@@ -72,7 +72,7 @@ const hiddenCount = computed(() =>
 .area-name {
   font-size: 18px;
   font-weight: 700;
-  color: #e2e8f0;
+  color: #f1f5f9;
   margin: 0;
   line-height: 1.3;
 }
@@ -97,33 +97,33 @@ const hiddenCount = computed(() =>
 
 .chip {
   font-size: 13px;
-  color: #7ba8f0;
-  background-color: rgba(59, 91, 219, 0.12);
-  border: 1px solid rgba(59, 91, 219, 0.2);
+  color: #93c5fd;
+  background-color: rgba(59, 91, 219, 0.2);
+  border: 1px solid rgba(59, 91, 219, 0.3);
   border-radius: 20px;
   padding: 3px 10px;
 }
 
 .chip--more {
-  color: #4a6080;
+  color: #94a3b8;
   background-color: rgba(255, 255, 255, 0.04);
   border-color: #1a2035;
 }
 
 .no-activity {
   font-size: 14px;
-  color: #2a3a50;
+  color: #64748b;
   margin: 0;
 }
 
 .edit-hint {
   font-size: 12px;
-  color: #1e2d45;
+  color: #475569;
   text-align: right;
   margin-top: auto;
 }
 
 .card:hover .edit-hint {
-  color: #3d5580;
+  color: #94a3b8;
 }
 </style>
