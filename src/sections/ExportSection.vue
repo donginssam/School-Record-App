@@ -1,6 +1,9 @@
+<script setup>
+</script>
 <template>
   <div class="section-wrap">
-    <h2 class="section-title">내보내기</h2>
+
+  <h2 class="section-title">내보내기</h2>
     <p class="section-desc">작성된 학생부를 Excel 등 외부 형식으로 내보냅니다.</p>
     <div class="placeholder-box">준비 중입니다.</div>
   </div>
@@ -8,19 +11,22 @@
 
 <style scoped>
 .section-wrap {
-  padding: 40px;
+  padding: 36px 40px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .section-title {
   font-size: 22px;
   font-weight: 700;
   color: #e2e8f0;
-  margin-bottom: 8px;
+  margin: 0 0 6px;
 }
 
 .section-desc {
   font-size: 16px;
-  color: #4a6080;
+  color: #7ba3d4;
   margin-bottom: 32px;
 }
 

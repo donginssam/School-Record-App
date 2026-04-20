@@ -1,3 +1,5 @@
+<script setup>
+</script>
 <template>
   <div class="section-wrap">
     <h2 class="section-title">개요</h2>
@@ -8,19 +10,22 @@
 
 <style scoped>
 .section-wrap {
-  padding: 40px;
+  padding: 36px 40px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .section-title {
   font-size: 22px;
   font-weight: 700;
   color: #e2e8f0;
-  margin-bottom: 8px;
+  margin: 0 0 6px;
 }
 
 .section-desc {
   font-size: 16px;
-  color: #4a6080;
+  color: #7ba3d4;
   margin-bottom: 32px;
 }
 

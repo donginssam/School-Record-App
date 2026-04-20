@@ -154,7 +154,13 @@ function isNewGroup(students, index) {
     <!-- 상단 컨트롤 -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <h2 class="section-title">생기부 작성</h2>
+        <div class="section-wrap">
+          <h2 class="section-title">생기부 작성</h2>
+          <p class="section-desc">영역(Area)을 선택하여 생기부를 작성합니다.</p>
+        </div>
+      </div>
+
+      <div class="toolbar-right">
         <select
             v-model="selectedAreaId"
             class="area-select"
@@ -167,18 +173,17 @@ function isNewGroup(students, index) {
           >{{ area.name }}
           </option>
         </select>
+        <button
+            class="btn-freeze"
+            :class="freezeColumns ? 'btn-freeze--on' : ''"
+            @click="freezeColumns = !freezeColumns"
+            title="틀고정 켜기/끄기"
+        >
+          <Pin v-if="freezeColumns" :size="15"/>
+          <PinOff v-else :size="15"/>
+          {{ freezeColumns ? '틀고정 ON' : '틀고정 OFF' }}
+        </button>
       </div>
-
-      <button
-          class="btn-freeze"
-          :class="freezeColumns ? 'btn-freeze--on' : ''"
-          @click="freezeColumns = !freezeColumns"
-          title="틀고정 켜기/끄기"
-      >
-        <Pin v-if="freezeColumns" :size="15"/>
-        <PinOff v-else :size="15"/>
-        {{ freezeColumns ? '틀고정 ON' : '틀고정 OFF' }}
-      </button>
     </div>
 
     <!-- 빈 상태: 영역 미선택 -->
@@ -356,12 +361,29 @@ function isNewGroup(students, index) {
   gap: 16px;
 }
 
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.section-wrap {
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
 .section-title {
   font-size: 22px;
   font-weight: 700;
   color: #e2e8f0;
   margin: 0 0 6px;
   white-space: nowrap;
+}
+
+.section-desc {
+  font-size: 16px;
+  color: #7ba3d4;
 }
 
 .area-select {
