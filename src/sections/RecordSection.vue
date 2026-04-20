@@ -10,6 +10,14 @@ const selectedAreaId = ref(null)
 const gridData = ref(null)
 const loading = ref(false)
 const freezeColumns = ref(true)
+const collapsedActivities = ref(new Set())
+
+function toggleActivity(actId) {
+  const next = new Set(collapsedActivities.value)
+  if (next.has(actId)) next.delete(actId)
+  else next.add(actId)
+  collapsedActivities.value = next
+}
 
 // 셀별 저장 상태 map: `${activityId}-${studentId}` → 'saving' | 'saved' | null
 const savingState = ref(new Map())
@@ -37,6 +45,7 @@ watch(selectedAreaId, async (id) => {
     }
     cellContent.value = map
     savingState.value = new Map()
+    collapsedActivities.value = new Set()
   } catch (e) {
     console.error(e)
     gridData.value = null
@@ -44,6 +53,10 @@ watch(selectedAreaId, async (id) => {
     loading.value = false
   }
 })
+
+function truncateName(name, max = 10) {
+  return name.length > max ? name.slice(0, max) + '…' : name
+}
 
 function cellKey(activityId, studentId) {
   return `${activityId}-${studentId}`
@@ -229,7 +242,9 @@ function isNewGroup(students, index) {
               v-for="act in gridData.activities"
               :key="act.id"
               class="th-activity"
-          >{{ act.name }}
+              :class="{ 'th-activity--collapsed': collapsedActivities.has(act.id) }"
+              @click="toggleActivity(act.id)"
+          >{{ collapsedActivities.has(act.id) ? truncateName(act.name) : act.name }}
           </th>
         </tr>
         </thead>
@@ -284,24 +299,27 @@ function isNewGroup(students, index) {
               :key="act.id"
               class="td-cell"
               :class="{
+                'td-cell--collapsed': collapsedActivities.has(act.id),
                 'td-cell--saving': getCellSavingState(act.id, student.id) === 'saving',
                 'td-cell--saved': getCellSavingState(act.id, student.id) === 'saved',
                 'td-cell--over': isOverLimit(act.id, student.id),
               }"
           >
-            <textarea
-                class="cell-input"
-                :value="getCellContent(act.id, student.id)"
-                @input="onCellInput(act.id, student.id, $event)"
-                rows="3"
-            />
-            <div
-                v-if="getCellContent(act.id, student.id)"
-                class="byte-counter"
-                :class="isOverLimit(act.id, student.id) ? 'byte-counter--over' : ''"
-            >
-              {{ byteLength(getCellContent(act.id, student.id)) }}B
-            </div>
+            <template v-if="!collapsedActivities.has(act.id)">
+              <textarea
+                  class="cell-input"
+                  :value="getCellContent(act.id, student.id)"
+                  @input="onCellInput(act.id, student.id, $event)"
+                  rows="3"
+              />
+              <div
+                  v-if="getCellContent(act.id, student.id)"
+                  class="byte-counter"
+                  :class="isOverLimit(act.id, student.id) ? 'byte-counter--over' : ''"
+              >
+                {{ byteLength(getCellContent(act.id, student.id)) }}B
+              </div>
+            </template>
           </td>
         </tr>
         </tbody>
@@ -447,6 +465,25 @@ function isNewGroup(students, index) {
 .th-activity {
   width: 320px;
   min-width: 280px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.th-activity:hover {
+  color: #93afd4;
+  background-color: #0d1220;
+}
+
+.th-activity--collapsed {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  text-orientation: mixed;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 3px 3px;
+  color: #3b5bdb;
 }
 
 /* sticky 열 */
@@ -562,6 +599,14 @@ thead .sticky {
 
 .td-cell--over {
   border: 1px solid rgba(239, 68, 68, 0.5) !important;
+}
+
+.td-cell--collapsed {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  padding: 0;
+  background-color: rgba(59, 91, 219, 0.04);
 }
 
 .cell-input {
