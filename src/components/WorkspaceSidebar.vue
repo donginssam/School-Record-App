@@ -3,6 +3,7 @@ import {computed} from 'vue'
 import {revealItemInDir} from '@tauri-apps/plugin-opener'
 import {
   BookOpen,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -10,7 +11,6 @@ import {
   Layers,
   LayoutDashboard,
   PenLine,
-  Save,
   Upload,
   Users,
 } from 'lucide-vue-next'
@@ -112,10 +112,10 @@ const navGroups = [
         <span v-if="!collapsed" class="file-name">{{ fileName }}</span>
       </button>
 
-      <!-- 저장 버튼 (더미) -->
-      <button class="save-btn" :class="{ 'save-btn--icon': collapsed }">
-        <Save :size="18"/>
-        <span v-if="!collapsed">저장</span>
+      <!-- 자동 저장 인디케이터 -->
+      <button v-if="fileName" class="autosave-indicator" :class="{ 'autosave-indicator--icon': collapsed }">
+        <CheckCircle :size="18" class="autosave-icon"/>
+        <span v-if="!collapsed" class="autosave-text">자동 저장됨</span>
       </button>
     </div>
   </aside>
@@ -298,32 +298,43 @@ const navGroups = [
   font-size: 13px;
 }
 
-.save-btn {
+.autosave-indicator {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 9px 10px;
+  padding: 8px 10px;
   border-radius: 10px;
-  background-color: rgba(59, 91, 219, 0.2);
-  border: 1px solid rgba(59, 91, 219, 0.4);
-  color: #a7c8ff;
+  background: none;
+  border: none;
+  color: #829ab1;
   cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-  transition: background-color 0.15s;
-  margin-top: 4px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background-color 0.15s, color 0.15s;
 }
 
-.save-btn:hover {
-  background-color: rgba(59, 91, 219, 0.35);
-  border-color: rgba(59, 91, 219, 0.6);
-  color: #ffffff;
+.autosave-indicator:hover {
+  background-color: #1e293b;
+  color: #c0d6f0;
 }
 
-.save-btn--icon {
-  padding: 9px;
+.autosave-indicator--icon {
+  justify-content: center;
+  padding: 8px;
+}
+
+.autosave-icon {
+  flex-shrink: 0;
+  color: #4ade80;
+  opacity: 0.6;
+}
+
+.autosave-text {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar--collapsed .file-btn {
