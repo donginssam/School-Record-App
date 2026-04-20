@@ -584,7 +584,7 @@ thead .sticky {
 }
 
 .td-total--over {
-  background-color: rgba(239, 68, 68, 0.06) !important;
+  background-color: #1a0c0c !important;
 }
 
 .total-bytes {
