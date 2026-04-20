@@ -50,10 +50,10 @@ const navGroups = [
   },
   {
     items: [
-      {id: 'area', label: '영역', icon: Layers},
-      {id: 'activity', label: '활동', icon: BookOpen},
-      {id: 'student', label: '학생 관리', icon: Users},
-      {id: 'record', label: '기록 작성', icon: PenLine},
+      {id: 'area', label: '영역(Area)', icon: Layers},
+      {id: 'activity', label: '활동(Activity)', icon: BookOpen},
+      {id: 'student', label: '학생(Students)', icon: Users},
+      {id: 'record', label: '생기부 작성', icon: PenLine},
     ],
   },
   {

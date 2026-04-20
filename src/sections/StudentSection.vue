@@ -83,7 +83,7 @@ async function handleDeleted() {
     <!-- 섹션 헤더 -->
     <div class="section-header">
       <div>
-        <h2 class="section-title">학생 관리</h2>
+        <h2 class="section-title">학생(Students) 관리</h2>
         <p class="section-desc">학생 정보를 등록하고 영역에 배정합니다.</p>
       </div>
       <div class="header-actions">

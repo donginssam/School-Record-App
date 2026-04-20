@@ -127,7 +127,7 @@ function isNewGroup(students, index) {
     <!-- 상단 컨트롤 -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <h2 class="section-title">기록 작성</h2>
+        <h2 class="section-title">생기부 작성</h2>
         <select
             v-model="selectedAreaId"
             class="area-select"
