@@ -156,7 +156,7 @@ function isNewGroup(students, index) {
 
     <!-- 빈 상태: 영역 미선택 -->
     <div v-if="!selectedAreaId" class="empty-state">
-      <p class="empty-text">위에서 영역을 선택하세요.</p>
+      <p class="empty-text">상단 메뉴에서 작성할 영역을 선택하세요.</p>
     </div>
 
     <!-- 로딩 -->
@@ -288,7 +288,7 @@ function isNewGroup(students, index) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 32px 16px;
+  padding: 36px 40px;
   border-bottom: 1px solid #1a2035;
   flex-shrink: 0;
   gap: 16px;
@@ -301,10 +301,10 @@ function isNewGroup(students, index) {
 }
 
 .section-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: #e2e8f0;
-  margin: 0;
+  margin: 0 0 6px;
   white-space: nowrap;
 }
 
