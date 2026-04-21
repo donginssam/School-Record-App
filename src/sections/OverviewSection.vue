@@ -1,7 +1,7 @@
 <script setup>
 import {BookOpen, ChevronRight, Layers, PenLine, Upload, Users} from 'lucide-vue-next'
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['navigate'])
 
 const steps = [
   {
@@ -89,7 +89,7 @@ const exampleActivities = [
             class="step-card"
             :class="{ 'step-card--wide': step.num === 5 }"
             :style="{ '--c': step.color, '--bg': step.bg, '--bd': step.border }"
-            @click="emit('select', step.section)"
+            @click="emit('navigate', step.section)"
         >
           <div class="step-top">
             <div class="step-num">{{ step.num }}</div>
@@ -97,7 +97,7 @@ const exampleActivities = [
             <span class="step-name">{{ step.title }}</span>
           </div>
           <div class="step-desc">{{ step.desc }}</div>
-          <button class="step-btn" @click.stop="emit('select', step.section)">
+          <button class="step-btn" @click.stop="emit('navigate', step.section)">
             이동하기
             <ChevronRight :size="15"/>
           </button>

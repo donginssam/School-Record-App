@@ -50,7 +50,7 @@ onMounted(async () => {
         @select="activeSection = $event"
     />
     <main class="workspace-main">
-      <component :is="currentSection" @select="activeSection = $event"/>
+      <component :is="currentSection" @navigate="activeSection = $event"/>
     </main>
   </div>
 </template>
