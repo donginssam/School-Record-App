@@ -110,16 +110,6 @@ CREATE INDEX IF NOT EXISTS idx_displayorder_areaactivity ON ActivityDisplayOrder
 -- 트리거
 -- ================================================================
 
-CREATE TRIGGER IF NOT EXISTS trg_record_history
-    AFTER UPDATE OF content
-    ON ActivityRecord
-    FOR EACH ROW
-    WHEN OLD.content != NEW.content
-BEGIN
-    INSERT INTO ActivityRecordHistory (activity_record_id, content, changed_at)
-    VALUES (OLD.id, OLD.content, datetime('now'));
-END;
-
 CREATE TRIGGER IF NOT EXISTS trg_display_order_on_activity_add
     AFTER INSERT
     ON AreaActivity
