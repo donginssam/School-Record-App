@@ -143,7 +143,7 @@ async function saveCell(activityId, studentId, content) {
       const clear = new Map(savingState.value)
       clear.delete(key)
       savingState.value = clear
-    }, 1200)
+    }, 500)
   } catch (e) {
     console.error(e)
     const next = new Map(savingState.value)
@@ -716,18 +716,19 @@ thead .sticky {
   width: 600px;
   min-width: 480px;
   position: relative;
+  transition: background-color 0.5s ease;
 }
 
 .td-cell--saving {
-  border: 1px solid rgba(59, 91, 219, 0.4) !important;
+  background-color: rgba(59, 91, 219, 0.3) !important;
 }
 
 .td-cell--saved {
-  border: 1px solid rgba(52, 211, 153, 0.4) !important;
+  background-color: rgba(52, 211, 153, 0.3) !important;
 }
 
 .td-cell--over {
-  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  background-color: rgba(239, 68, 68, 0.3) !important;
 }
 
 .td-cell--collapsed {
