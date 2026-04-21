@@ -418,7 +418,7 @@ function isNewGroup(students, index) {
   align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
-  padding: 24px 40px;
+  padding: 36px 40px;
   border-bottom: 1px solid #1a2035;
   flex-shrink: 0;
   gap: 16px;
