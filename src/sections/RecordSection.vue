@@ -419,9 +419,10 @@ function isNewGroup(students, index) {
 /* 툴바 */
 .toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 36px 40px;
+  flex-wrap: wrap;
+  padding: 24px 40px;
   border-bottom: 1px solid #1a2035;
   flex-shrink: 0;
   gap: 16px;
@@ -436,7 +437,8 @@ function isNewGroup(students, index) {
 .toolbar-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .section-wrap {
@@ -582,6 +584,7 @@ function isNewGroup(students, index) {
   background-color: #080b14;
   padding: 10px 10px;
   border-bottom: 1px solid #1a2035;
+  border-right: 1px solid rgba(40, 55, 90, 0.5);
   white-space: nowrap;
   text-align: center;
   letter-spacing: 0.03em;
@@ -637,7 +640,8 @@ thead .sticky {
   font-size: 14px;
   color: #dce8f8;
   padding: 6px 10px;
-  border-bottom: 1px solid rgba(60, 80, 120, 0.8);
+  border-bottom: 1px solid rgba(40, 55, 90, 0.6);
+  border-right: 1px solid rgba(40, 55, 90, 0.5);
   vertical-align: top;
   text-align: center;
 }
