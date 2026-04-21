@@ -1,7 +1,63 @@
-# Tauri + Vue 3
+# 학교생활기록부 작성 도우미
 
-This template should help get you started developing with Tauri + Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+> 교사를 위한 학교생활기록부 작성 도구
 
-## Recommended IDE Setup
+학생별 생활기록부를 활동 단위로 체계적으로 입력하고, 글자 수(바이트) 제한을 실시간으로 확인하며, 완성된 내용을 엑셀로 내보낼 수 있는 데스크톱 애플리케이션입니다.
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+---
+
+## 주요 기능
+
+- **학생 관리** — 학년·반·번호·이름 등록, 엑셀 일괄 가져오기 지원
+- **영역 설정** — 진로활동, 자율활동, 동아리 등 영역별 바이트 제한 설정
+- **활동 관리** — 활동(수업, 프로젝트 등)을 영역과 연결하여 체계적으로 관리
+- **특기사항 입력** — 학생 × 활동 격자 형태의 직관적인 입력 화면, 실시간 바이트 집계
+- **변경 이력** — 5분 단위 자동 스냅샷과 Diff 뷰로 수정 내역 추적
+- **엑셀 가져오기/내보내기** — 3가지 서식(Type A/B/C)으로 내보내기, 기존 파일 가져오기 지원
+- **자동 업데이트 확인** — GitHub 릴리즈 기반 신규 버전 알림
+
+---
+
+## 다운로드
+
+[Releases](../../releases) 페이지에서 최신 버전을 내려받을 수 있습니다.
+
+---
+
+## 사용 방법
+
+1. 앱을 실행하고 **새 프로젝트**를 만들거나 기존 `.db` 파일을 엽니다.
+2. **학생** 탭에서 학생을 등록합니다 (엑셀 일괄 등록 가능).
+3. **영역** 탭에서 기록할 영역과 바이트 제한을 설정합니다.
+4. **활동** 탭에서 수업·프로그램 등 개별 활동을 추가합니다.
+5. **특기사항** 탭에서 학생별 내용을 입력합니다.
+6. **내보내기** 탭에서 완성된 내용을 엑셀 파일로 저장합니다.
+
+---
+
+## 개발 환경 설정
+
+### 사전 준비
+
+- [Node.js](https://nodejs.org/) 18 이상
+- [Rust 툴체인](https://rustup.rs/)
+
+### 실행
+
+```bash
+# 의존성 설치
+npm install
+
+# 개발 모드 실행 (Vite + Tauri)
+npm run tauri dev
+```
+
+### 빌드
+
+```bash
+# 포터블 실행 파일
+npm run tauri:portable
+
+# 설치 파일 (NSIS)
+npm run tauri:installer
+```
