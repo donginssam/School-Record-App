@@ -1,7 +1,7 @@
 <script setup>
 import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import {invoke} from '@tauri-apps/api/core'
-import {Pin, PinOff} from 'lucide-vue-next'
+import {ArrowLeftRight, Pin, PinOff} from 'lucide-vue-next'
 import {useAreaStore} from '../stores/area'
 
 const areaStore = useAreaStore()
@@ -10,6 +10,7 @@ const selectedAreaId = ref(null)
 const gridData = ref(null)
 const loading = ref(false)
 const freezeColumns = ref(true)
+const smartScroll = ref(true)
 const collapsedActivities = ref(new Set())
 
 function toggleActivity(actId) {
@@ -96,16 +97,21 @@ function onCellInput(activityId, studentId, event) {
 function onGridWheel(event) {
   const el = event.currentTarget
   if (Math.abs(event.deltaX) > 0) {
-    el.scrollLeft += event.deltaX
     event.preventDefault()
+    el.scrollLeft += event.deltaX
     return
   }
-  const atTop = el.scrollTop <= 0 && event.deltaY < 0
-  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && event.deltaY > 0
-  if (atTop || atBottom) {
-    event.preventDefault()
-    el.scrollLeft += event.deltaY
+  if (!smartScroll.value) {
+    if (event.shiftKey) {
+      event.preventDefault()
+      el.scrollLeft += event.deltaY
+    }
+    return
   }
+  const inFixedArea = event.target.closest('.td-fixed, .th-fixed') !== null
+  if (inFixedArea) return
+  event.preventDefault()
+  el.scrollLeft += event.deltaY
 }
 
 async function saveCell(activityId, studentId, content) {
@@ -208,6 +214,15 @@ function isNewGroup(students, index) {
           <Pin v-if="freezeColumns" :size="15"/>
           <PinOff v-else :size="15"/>
           {{ freezeColumns ? '틀고정 ON' : '틀고정 OFF' }}
+        </button>
+        <button
+            class="btn-freeze"
+            :class="smartScroll ? 'btn-freeze--on' : ''"
+            @click="smartScroll = !smartScroll"
+            title="스마트 스크롤: 활동 영역에서 휠 → 좌우 스크롤"
+        >
+          <ArrowLeftRight :size="15"/>
+          {{ smartScroll ? '스마트스크롤 ON' : '스마트스크롤 OFF' }}
         </button>
       </div>
     </div>
@@ -478,13 +493,26 @@ function isNewGroup(students, index) {
 }
 
 .grid-wrapper::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 12px;
+  height: 12px;
+}
+
+.grid-wrapper::-webkit-scrollbar-track {
+  background-color: #0d1220;
 }
 
 .grid-wrapper::-webkit-scrollbar-thumb {
-  background-color: #1a2035;
-  border-radius: 3px;
+  background-color: #2d3a5a;
+  border-radius: 6px;
+  border: 3px solid #0d1220;
+}
+
+.grid-wrapper::-webkit-scrollbar-thumb:hover {
+  background-color: #4a5f8a;
+}
+
+.grid-wrapper::-webkit-scrollbar-corner {
+  background-color: #0d1220;
 }
 
 .grid-table {
