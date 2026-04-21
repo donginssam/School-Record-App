@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "School-Record-App",
+        "title": "School Record App (by luminousky.com)",
         "width": 580,
         "height": 580,
         "resizable": false,
