@@ -55,11 +55,17 @@ const steps = [
     border: 'rgba(16,185,129,0.25)',
   },
 ]
+
+const exampleActivities = [
+  {name: '전공탐색 퀴즈 대회', desc: '학생 주도 참여'},
+  {name: '전공 도서 독후감', desc: '독서 기록 활동'},
+  {name: '진로 상담 프로그램', desc: '개별 상담 참여'},
+  {name: '직업인 특강 청취', desc: '외부 강사 연계'},
+]
 </script>
 
 <template>
   <div class="section">
-
     <div class="section-body">
 
       <!-- 히어로 -->
@@ -77,87 +83,78 @@ const steps = [
 
       <!-- 워크플로 스텝 -->
       <div class="steps">
-        <template v-for="(step, idx) in steps" :key="step.num">
-
-          <div
-              class="step-card"
-              :style="{
-              '--c': step.color,
-              '--bg': step.bg,
-              '--bd': step.border,
-            }"
-              @click="emit('select', step.section)"
-          >
-            <div class="step-left">
-              <div class="step-num">{{ step.num }}</div>
-              <component :is="step.icon" :size="28" class="step-icon"/>
-            </div>
-            <div class="step-middle">
-              <div class="step-name">{{ step.title }}</div>
-              <div class="step-desc">{{ step.desc }}</div>
-            </div>
-            <button class="step-btn" @click.stop="emit('select', step.section)">
-              이동하기
-              <ChevronRight :size="16"/>
-            </button>
+        <div
+            v-for="step in steps"
+            :key="step.num"
+            class="step-card"
+            :class="{ 'step-card--wide': step.num === 5 }"
+            :style="{ '--c': step.color, '--bg': step.bg, '--bd': step.border }"
+            @click="emit('select', step.section)"
+        >
+          <div class="step-left">
+            <div class="step-num">{{ step.num }}</div>
+            <component :is="step.icon" :size="28" class="step-icon"/>
           </div>
-
-          <div v-if="idx < steps.length - 1" class="connector">
-            <div class="connector-line"/>
-            <div class="connector-arrow">↓</div>
-            <div class="connector-line"/>
+          <div class="step-middle">
+            <div class="step-name">{{ step.title }}</div>
+            <div class="step-desc">{{ step.desc }}</div>
           </div>
-
-        </template>
+          <button class="step-btn" @click.stop="emit('select', step.section)">
+            이동하기
+            <ChevronRight :size="16"/>
+          </button>
+        </div>
       </div>
 
-      <!-- 도메인 구조 -->
-      <div class="domain">
-        <div class="domain-title-row">
-          <span class="domain-eyebrow">핵심 구조 이해</span>
-          <span class="domain-hint">하나의 Area 안에 여러 Activity가 포함되며, 각 Activity마다 학생별 기록을 작성합니다.</span>
+      <!-- 구조 설명 -->
+      <div class="structure">
+        <div class="structure-header">
+          <h2 class="structure-title">이 프로그램은 어떻게 작동하나요?</h2>
+          <p class="structure-sub">
+            생기부의 각 항목은 <strong>영역(Area)</strong>이라고 부릅니다.
+            예를 들어 <strong>진로활동</strong>이 하나의 영역입니다.<br>
+            그 안에 학생이 실제로 참여한 개별 활동들, 즉 <strong>Activity</strong>를 여러 개 담아 하나의 영역을 완성합니다.
+          </p>
         </div>
 
-        <div class="domain-diagram">
+        <!-- Area 박스 다이어그램 -->
+        <div class="area-box">
+          <div class="area-box-header">
+            <span class="area-tag">Area</span>
+            <span class="area-box-name">진로활동</span>
+            <span class="area-box-limit">최대 1,500 byte</span>
+          </div>
 
-          <div class="dom-block dom-block--area">
-            <div class="dom-tag"
-                 style="color:#a855f7; background:rgba(168,85,247,0.14); border-color:rgba(168,85,247,0.3);">Area
+          <div class="area-box-desc">
+            아래 Activity들의 기록이 합쳐져 이 영역 하나를 구성합니다.
+          </div>
+
+          <div class="activities-grid">
+            <div
+                v-for="act in exampleActivities"
+                :key="act.name"
+                class="activity-card"
+            >
+              <div class="activity-dot"></div>
+              <div class="activity-info">
+                <div class="activity-name">{{ act.name }}</div>
+                <div class="activity-sub">{{ act.desc }}</div>
+              </div>
             </div>
-            <div class="dom-block-name">진로활동</div>
-            <div class="dom-block-sub">생기부 대분류 영역</div>
-          </div>
 
-          <div class="dom-rel">
-            <div class="dom-rel-line"/>
-            <span class="dom-rel-label">1 : N</span>
-            <div class="dom-rel-line"/>
-          </div>
-
-          <div class="dom-activities-col">
-            <div class="dom-tag"
-                 style="color:#818cf8; background:rgba(129,140,248,0.14); border-color:rgba(129,140,248,0.3); margin-bottom:12px;">
-              Activities
+            <!-- 추가 가능 암시 카드 -->
+            <div class="activity-card activity-card--more">
+              <div class="activity-more-icon">＋</div>
+              <div class="activity-info">
+                <div class="activity-name" style="color:#5a7090;">활동 더 추가 가능</div>
+                <div class="activity-sub">원하는 만큼</div>
+              </div>
             </div>
-            <div class="dom-chip">AI 탐구 프로젝트</div>
-            <div class="dom-chip">진로 독서 발표</div>
-            <div class="dom-chip">직업인 특강 참여</div>
           </div>
 
-          <div class="dom-rel">
-            <div class="dom-rel-line"/>
-            <span class="dom-rel-label">조합</span>
-            <div class="dom-rel-line"/>
+          <div class="area-box-footer">
+            각 Activity마다 학생별로 기록을 작성하면, 합산 문장이 <strong>진로활동</strong> 항목으로 완성됩니다.
           </div>
-
-          <div class="dom-block dom-block--result">
-            <div class="dom-tag"
-                 style="color:#10b981; background:rgba(16,185,129,0.14); border-color:rgba(16,185,129,0.3);">결과
-            </div>
-            <div class="dom-block-name" style="font-size:15px; line-height:1.65;">학생별 생기부<br>문장 완성</div>
-            <div class="dom-block-sub">바이트 제한 자동 관리</div>
-          </div>
-
         </div>
       </div>
 
@@ -166,7 +163,6 @@ const steps = [
 </template>
 
 <style scoped>
-/* ── 공통 섹션 레이아웃 ─────────────────────────────────────── */
 .section {
   display: flex;
   flex-direction: column;
@@ -178,10 +174,10 @@ const steps = [
 .section-body {
   flex: 1;
   overflow-y: auto;
-  padding: 40px 40px 56px;
+  padding: 44px 44px 60px;
   display: flex;
   flex-direction: column;
-  gap: 48px;
+  gap: 52px;
 }
 
 /* ── 히어로 ─────────────────────────────────────────────────── */
@@ -195,9 +191,9 @@ const steps = [
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
-  color: #7ba3d4;
+  color: #93b8d8;
 }
 
 .eyebrow-badge {
@@ -212,33 +208,33 @@ const steps = [
 }
 
 .hero-title {
-  font-size: 36px;
+  font-size: 38px;
   font-weight: 800;
-  color: #e2e8f0;
+  color: #eef2f8;
   margin: 0;
-  line-height: 1.3;
+  line-height: 1.28;
   letter-spacing: -0.02em;
 }
 
 .hero-sub {
-  font-size: 15px;
-  color: #7ba3d4;
+  font-size: 16px;
+  color: #93b8d8;
   margin: 0;
-  line-height: 1.75;
+  line-height: 1.8;
 }
 
 /* ── 워크플로 스텝 ───────────────────────────────────────────── */
 .steps {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
 }
 
 .step-card {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 24px 28px;
+  gap: 20px;
+  padding: 22px 24px;
   background: var(--bg);
   border: 1px solid var(--bd);
   border-radius: 16px;
@@ -246,22 +242,26 @@ const steps = [
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
+.step-card--wide {
+  grid-column: 1 / -1;
+}
+
 .step-card:hover {
   border-color: var(--c);
   box-shadow: 0 4px 24px color-mix(in srgb, var(--c) 18%, transparent);
-  transform: translateX(4px);
+  transform: translateY(-2px);
 }
 
 .step-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   flex-shrink: 0;
 }
 
 .step-num {
-  width: 52px;
-  height: 52px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--c) 14%, transparent);
   border: 2px solid color-mix(in srgb, var(--c) 35%, transparent);
@@ -287,21 +287,21 @@ const steps = [
 .step-name {
   font-size: 18px;
   font-weight: 700;
-  color: #e2e8f0;
-  margin-bottom: 6px;
+  color: #eef2f8;
+  margin-bottom: 5px;
 }
 
 .step-desc {
   font-size: 14px;
-  color: #7ba3d4;
+  color: #8bb2cc;
   line-height: 1.6;
 }
 
 .step-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 18px;
+  gap: 5px;
+  padding: 8px 16px;
   border-radius: 10px;
   background: color-mix(in srgb, var(--c) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
@@ -310,8 +310,8 @@ const steps = [
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s;
   white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .step-btn:hover {
@@ -319,138 +319,166 @@ const steps = [
   border-color: var(--c);
 }
 
-.connector {
+/* ── 구조 설명 ───────────────────────────────────────────────── */
+.structure {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  padding-left: 52px;
-  gap: 0;
+  gap: 24px;
 }
 
-.connector-line {
-  width: 1px;
-  height: 10px;
-  background: #1e2a45;
-  margin-left: 25px;
-}
-
-.connector-arrow {
-  font-size: 14px;
-  color: #2a3a5a;
-  margin-left: 17px;
-  line-height: 1;
-}
-
-/* ── 도메인 구조 ─────────────────────────────────────────────── */
-.domain {
+.structure-header {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
-.domain-title-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.domain-eyebrow {
-  font-size: 11px;
+.structure-title {
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: #4a6080;
-  flex-shrink: 0;
+  color: #eef2f8;
+  margin: 0;
 }
 
-.domain-hint {
-  font-size: 13px;
-  color: #4a6080;
+.structure-sub {
+  font-size: 15px;
+  color: #93b8d8;
+  line-height: 1.8;
+  margin: 0;
 }
 
-.domain-diagram {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+.structure-sub strong {
+  color: #c8d8f0;
+  font-weight: 700;
+}
+
+.structure-sub em {
+  font-style: normal;
+  color: #c8d8f0;
+}
+
+/* ── Area 박스 다이어그램 ────────────────────────────────────── */
+.area-box {
+  border: 2px solid rgba(168, 85, 247, 0.35);
+  border-radius: 20px;
+  background: rgba(168, 85, 247, 0.04);
   padding: 28px 32px;
-  background: #0d1220;
-  border: 1px solid #1a2035;
-  border-radius: 16px;
-  flex-wrap: wrap;
-}
-
-.dom-block {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 20px 24px;
-  border-radius: 12px;
-  border: 1px solid #1e2a45;
-  background: #080b14;
-  flex-shrink: 0;
-  min-width: 150px;
+  gap: 20px;
 }
 
-.dom-tag {
-  display: inline-flex;
+.area-box-header {
+  display: flex;
   align-items: center;
-  font-size: 11px;
+  gap: 14px;
+}
+
+.area-tag {
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  border-radius: 999px;
-  border: 1px solid;
-  padding: 2px 10px;
-  width: fit-content;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.16);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 6px;
+  padding: 3px 10px;
 }
 
-.dom-block-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: #e2e8f0;
+.area-box-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: #eef2f8;
 }
 
-.dom-block-sub {
-  font-size: 12px;
-  color: #4a6080;
-}
-
-.dom-rel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.dom-rel-line {
-  width: 24px;
-  height: 1px;
-  background: #1e2a45;
-}
-
-.dom-rel-label {
-  font-size: 11px;
-  color: #3a4a6b;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.dom-activities-col {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  flex-shrink: 0;
-}
-
-.dom-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.area-box-limit {
   font-size: 13px;
-  color: #c8d8f0;
-  background: rgba(129, 140, 248, 0.08);
-  border: 1px solid rgba(129, 140, 248, 0.22);
-  border-radius: 8px;
-  padding: 7px 14px;
+  color: #718fad;
+  margin-left: auto;
+  border: 1px solid #30395c;
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+
+.area-box-desc {
+  font-size: 14px;
+  color: #6a8aaa;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #1a2035;
+}
+
+.activities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.activity-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: #0d1220;
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-radius: 12px;
+  transition: border-color 0.15s;
+}
+
+.activity-card:hover {
+  border-color: rgba(129, 140, 248, 0.5);
+}
+
+.activity-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #818cf8;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.activity-card--more {
+  border-style: dashed;
+  border-color: #1e2a45;
+  background: transparent;
+}
+
+.activity-more-icon {
+  width: 10px;
+  text-align: center;
+  font-size: 16px;
+  color: #3a4a6b;
+  flex-shrink: 0;
+}
+
+.activity-info {
+  min-width: 0;
+}
+
+.activity-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #d0e0f0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-sub {
+  font-size: 12px;
+  color: #5a7090;
+  margin-top: 2px;
+}
+
+.area-box-footer {
+  font-size: 14px;
+  color: #6a8aaa;
+  padding-top: 4px;
+  border-top: 1px solid #1a2035;
+  line-height: 1.7;
+}
+
+.area-box-footer strong {
+  color: #a880f0;
+  font-weight: 600;
 }
 </style>
