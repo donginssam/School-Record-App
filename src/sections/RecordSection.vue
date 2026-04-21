@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import {invoke} from '@tauri-apps/api/core'
 import {Pin, PinOff} from 'lucide-vue-next'
 import {useAreaStore} from '../stores/area'
@@ -46,6 +46,8 @@ watch(selectedAreaId, async (id) => {
     cellContent.value = map
     savingState.value = new Map()
     collapsedActivities.value = new Set()
+    await nextTick()
+    document.querySelectorAll('.cell-input').forEach(el => autoResize(el))
   } catch (e) {
     console.error(e)
     gridData.value = null
@@ -70,12 +72,18 @@ function getCellSavingState(activityId, studentId) {
   return savingState.value.get(cellKey(activityId, studentId))
 }
 
+function autoResize(el) {
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 300) + 'px'
+}
+
 function onCellInput(activityId, studentId, event) {
   const key = cellKey(activityId, studentId)
   const content = event.target.value
   const map = new Map(cellContent.value)
   map.set(key, content)
   cellContent.value = map
+  autoResize(event.target)
 
   // debounce 저장
   if (debounceTimers.has(key)) {
@@ -83,6 +91,21 @@ function onCellInput(activityId, studentId, event) {
   }
   const timer = setTimeout(() => saveCell(activityId, studentId, content), 1000)
   debounceTimers.set(key, timer)
+}
+
+function onGridWheel(event) {
+  const el = event.currentTarget
+  if (Math.abs(event.deltaX) > 0) {
+    el.scrollLeft += event.deltaX
+    event.preventDefault()
+    return
+  }
+  const atTop = el.scrollTop <= 0 && event.deltaY < 0
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && event.deltaY > 0
+  if (atTop || atBottom) {
+    event.preventDefault()
+    el.scrollLeft += event.deltaY
+  }
 }
 
 async function saveCell(activityId, studentId, content) {
@@ -209,7 +232,7 @@ function isNewGroup(students, index) {
     </div>
 
     <!-- 그리드 -->
-    <div v-else class="grid-wrapper">
+    <div v-else class="grid-wrapper" @wheel="onGridWheel">
       <table class="grid-table">
         <thead>
         <tr>
@@ -639,7 +662,6 @@ thead .sticky {
   border: 1px solid rgba(59, 91, 219, 0.25);
   border-radius: 6px;
   color: #e2e8f0;
-  field-sizing: content;
   resize: none;
   outline: none;
   transition: border-color 0.15s, background-color 0.15s;
