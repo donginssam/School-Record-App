@@ -53,13 +53,13 @@ const navGroups = [
       {id: 'student', label: '학생(Students)', icon: Users},
       {id: 'area', label: '영역(Area)', icon: Layers},
       {id: 'activity', label: '활동(Activity)', icon: BookOpen},
-      {id: 'record', label: '생기부 작성', icon: PenLine},
+      {id: 'record', label: '생기부 작성(Write)', icon: PenLine},
     ],
   },
   {
     items: [
-      {id: 'import', label: '가져오기', icon: Download},
-      {id: 'export', label: '내보내기', icon: Upload},
+      {id: 'import', label: '가져오기(Import)', icon: Download},
+      {id: 'export', label: '내보내기(Export)', icon: Upload},
     ],
   },
 ]
