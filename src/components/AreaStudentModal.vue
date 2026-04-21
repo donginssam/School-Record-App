@@ -240,14 +240,6 @@ function submit() {
   padding: 12px 0;
 }
 
-.modal-body::-webkit-scrollbar {
-  width: 4px;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-  background-color: #1a2035;
-  border-radius: 2px;
-}
 
 .empty-hint {
   font-size: 15px;

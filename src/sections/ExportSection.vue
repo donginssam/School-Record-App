@@ -471,14 +471,6 @@ async function doExport() {
   padding: 32px 40px;
 }
 
-.wizard-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.wizard-body::-webkit-scrollbar-thumb {
-  background-color: #1a2035;
-  border-radius: 3px;
-}
 
 .step-content {
 }

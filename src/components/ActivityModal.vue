@@ -394,18 +394,6 @@ function handleDelete() {
   padding-right: 4px;
 }
 
-.chip-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.chip-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.chip-scroll::-webkit-scrollbar-thumb {
-  background-color: #1a2035;
-  border-radius: 4px;
-}
 
 .area-chip {
   padding: 7px 16px;

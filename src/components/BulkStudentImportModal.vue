@@ -430,14 +430,6 @@ async function doImport() {
   gap: 16px;
 }
 
-.modal-body::-webkit-scrollbar {
-  width: 4px;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-  background-color: #1a2035;
-  border-radius: 2px;
-}
 
 /* 샘플 섹션 */
 .sample-section {

@@ -593,28 +593,6 @@ function isNewGroup(students, index) {
   overflow: auto;
 }
 
-.grid-wrapper::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-.grid-wrapper::-webkit-scrollbar-track {
-  background-color: #0d1220;
-}
-
-.grid-wrapper::-webkit-scrollbar-thumb {
-  background-color: #2d3a5a;
-  border-radius: 6px;
-  border: 3px solid #0d1220;
-}
-
-.grid-wrapper::-webkit-scrollbar-thumb:hover {
-  background-color: #4a5f8a;
-}
-
-.grid-wrapper::-webkit-scrollbar-corner {
-  background-color: #0d1220;
-}
 
 .grid-table {
   border-collapse: separate;
