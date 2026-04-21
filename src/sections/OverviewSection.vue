@@ -16,28 +16,28 @@ const steps = [
   },
   {
     num: 2,
-    icon: BookOpen,
-    title: 'Activity 생성',
-    desc: '수업·프로젝트·동아리 등 생기부에 들어갈 각 활동 단위를 만듭니다.',
-    section: 'activity',
-    color: '#818cf8',
-    bg: 'rgba(129,140,248,0.07)',
-    border: 'rgba(129,140,248,0.25)',
-  },
-  {
-    num: 3,
     icon: Layers,
-    title: 'Area 구성',
-    desc: '여러 Activity를 묶어 진로활동·자율활동·동아리 등 생기부 영역을 완성합니다.',
+    title: '영역(Area) 구성',
+    desc: '진로활동·자율활동·동아리 등 생기부 영역을 먼저 만들고 바이트 제한을 설정합니다.',
     section: 'area',
     color: '#a855f7',
     bg: 'rgba(168,85,247,0.07)',
     border: 'rgba(168,85,247,0.25)',
   },
   {
+    num: 3,
+    icon: BookOpen,
+    title: '활동(Activity) 생성',
+    desc: '수업·프로젝트·동아리 등 각 활동을 만들고 해당 영역에 연결합니다.',
+    section: 'activity',
+    color: '#818cf8',
+    bg: 'rgba(129,140,248,0.07)',
+    border: 'rgba(129,140,248,0.25)',
+  },
+  {
     num: 4,
     icon: PenLine,
-    title: '기록 작성',
+    title: '생기부 작성',
     desc: '학생별·활동별 생기부 문장을 셀 단위로 입력합니다. 바이트 제한을 자동으로 표시합니다.',
     section: 'record',
     color: '#f59e0b',
@@ -47,8 +47,8 @@ const steps = [
   {
     num: 5,
     icon: Upload,
-    title: '내보내기',
-    desc: '완성된 생기부 문장을 엑셀 파일로 추출합니다. A·B·C 세 가지 형식을 지원합니다.',
+    title: '엑셀로 내보내기',
+    desc: '완성된 생기부 문장을 엑셀 파일로 추출합니다.',
     section: 'export',
     color: '#10b981',
     bg: 'rgba(16,185,129,0.07)',
@@ -74,10 +74,10 @@ const exampleActivities = [
           <span class="eyebrow-badge">생기부</span>
           학교생활기록부 작성 도우미
         </div>
-        <h1 class="hero-title">5단계로 완성하는<br>체계적인 생기부 관리</h1>
+        <h1 class="hero-title">5단계로 완성하는<br>체계적인 생기부 작성</h1>
         <p class="hero-sub">
-          학생 명렬표 등록부터 Activity 조합, 영역 구성, 기록 작성, 내보내기까지<br>
-          아래 순서대로 진행하면 학생별 생활기록부 문장을 완성할 수 있습니다.
+          학생 명렬표 등록부터 영역 구성, 활동 생성, 생기부 작성, 내보내기까지<br>
+          아래 순서대로 진행하면 학생별 학교생활기록부 문장을 손쉽게 완성할 수 있습니다.
         </p>
       </div>
 
@@ -91,17 +91,15 @@ const exampleActivities = [
             :style="{ '--c': step.color, '--bg': step.bg, '--bd': step.border }"
             @click="emit('select', step.section)"
         >
-          <div class="step-left">
+          <div class="step-top">
             <div class="step-num">{{ step.num }}</div>
-            <component :is="step.icon" :size="28" class="step-icon"/>
+            <component :is="step.icon" :size="24" class="step-icon"/>
           </div>
-          <div class="step-middle">
-            <div class="step-name">{{ step.title }}</div>
-            <div class="step-desc">{{ step.desc }}</div>
-          </div>
+          <div class="step-name">{{ step.title }}</div>
+          <div class="step-desc">{{ step.desc }}</div>
           <button class="step-btn" @click.stop="emit('select', step.section)">
             이동하기
-            <ChevronRight :size="16"/>
+            <ChevronRight :size="15"/>
           </button>
         </div>
       </div>
@@ -232,8 +230,9 @@ const exampleActivities = [
 
 .step-card {
   display: flex;
-  align-items: center;
-  gap: 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   padding: 22px 24px;
   background: var(--bg);
   border: 1px solid var(--bd);
@@ -252,21 +251,20 @@ const exampleActivities = [
   transform: translateY(-2px);
 }
 
-.step-left {
+.step-top {
   display: flex;
   align-items: center;
-  gap: 14px;
-  flex-shrink: 0;
+  gap: 12px;
 }
 
 .step-num {
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--c) 14%, transparent);
   border: 2px solid color-mix(in srgb, var(--c) 35%, transparent);
   color: var(--c);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -279,38 +277,33 @@ const exampleActivities = [
   opacity: 0.85;
 }
 
-.step-middle {
-  flex: 1;
-  min-width: 0;
-}
-
 .step-name {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: #eef2f8;
-  margin-bottom: 5px;
 }
 
 .step-desc {
   font-size: 14px;
   color: #8bb2cc;
-  line-height: 1.6;
+  line-height: 1.65;
+  flex: 1;
 }
 
 .step-btn {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 8px 16px;
-  border-radius: 10px;
+  gap: 4px;
+  padding: 7px 14px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--c) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
   color: var(--c);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  flex-shrink: 0;
   white-space: nowrap;
+  margin-top: 4px;
   transition: background 0.15s, border-color 0.15s;
 }
 

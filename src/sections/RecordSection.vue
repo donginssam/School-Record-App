@@ -156,7 +156,7 @@ function isNewGroup(students, index) {
       <div class="toolbar-left">
         <div class="section-wrap">
           <h2 class="section-title">생기부 작성</h2>
-          <p class="section-desc">영역(Area)을 선택하여 학생별 활동 내용을 입력합니다.</p>
+          <p class="section-desc">좌측 드롭다운 메뉴에서 원하는 영역(Area)을 선택하여 학생별 활동 내용을 입력합니다.</p>
         </div>
       </div>
 
@@ -188,7 +188,7 @@ function isNewGroup(students, index) {
 
     <!-- 빈 상태: 영역 미선택 -->
     <div v-if="!selectedAreaId" class="empty-state">
-      <p class="empty-text">상단 메뉴에서 작성할 영역을 선택하세요.</p>
+      <p class="empty-text">상단 드롭다운 메뉴에서 영역(Area)을 선택하세요.</p>
     </div>
 
     <!-- 로딩 -->
