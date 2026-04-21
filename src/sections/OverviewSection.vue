@@ -93,9 +93,9 @@ const exampleActivities = [
         >
           <div class="step-top">
             <div class="step-num">{{ step.num }}</div>
-            <component :is="step.icon" :size="24" class="step-icon"/>
+            <component :is="step.icon" :size="28" class="step-icon" />
+            <span class="step-name">{{ step.title }}</span>
           </div>
-          <div class="step-name">{{ step.title }}</div>
           <div class="step-desc">{{ step.desc }}</div>
           <button class="step-btn" @click.stop="emit('select', step.section)">
             이동하기
@@ -189,36 +189,36 @@ const exampleActivities = [
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   color: #93b8d8;
 }
 
 .eyebrow-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #fbbf24;
   background: rgba(251, 191, 36, 0.12);
   border: 1px solid rgba(251, 191, 36, 0.28);
   border-radius: 5px;
-  padding: 2px 8px;
+  padding: 3px 10px;
 }
 
 .hero-title {
-  font-size: 38px;
+  font-size: 46px;
   font-weight: 800;
   color: #eef2f8;
   margin: 0;
-  line-height: 1.28;
-  letter-spacing: -0.02em;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
 }
 
 .hero-sub {
-  font-size: 16px;
+  font-size: 17px;
   color: #93b8d8;
   margin: 0;
-  line-height: 1.8;
+  line-height: 1.85;
 }
 
 /* ── 워크플로 스텝 ───────────────────────────────────────────── */
@@ -231,9 +231,9 @@ const exampleActivities = [
 .step-card {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 22px 24px;
+  align-items: stretch;
+  gap: 12px;
+  padding: 26px 28px;
   background: var(--bg);
   border: 1px solid var(--bd);
   border-radius: 16px;
@@ -255,16 +255,18 @@ const exampleActivities = [
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .step-num {
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--c) 14%, transparent);
   border: 2px solid color-mix(in srgb, var(--c) 35%, transparent);
   color: var(--c);
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -278,31 +280,36 @@ const exampleActivities = [
 }
 
 .step-name {
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
   color: #eef2f8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
 
 .step-desc {
-  font-size: 14px;
+  font-size: 15px;
   color: #8bb2cc;
-  line-height: 1.65;
+  line-height: 1.7;
   flex: 1;
 }
 
 .step-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 7px 14px;
-  border-radius: 8px;
+  gap: 5px;
+  padding: 9px 18px;
+  border-radius: 9px;
   background: color-mix(in srgb, var(--c) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
   color: var(--c);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  align-self: flex-start;
   margin-top: 4px;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -326,16 +333,16 @@ const exampleActivities = [
 }
 
 .structure-title {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
   color: #eef2f8;
   margin: 0;
 }
 
 .structure-sub {
-  font-size: 15px;
+  font-size: 16px;
   color: #93b8d8;
-  line-height: 1.8;
+  line-height: 1.85;
   margin: 0;
 }
 
@@ -367,33 +374,33 @@ const exampleActivities = [
 }
 
 .area-tag {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #a855f7;
   background: rgba(168, 85, 247, 0.16);
   border: 1px solid rgba(168, 85, 247, 0.35);
   border-radius: 6px;
-  padding: 3px 10px;
+  padding: 4px 12px;
 }
 
 .area-box-name {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 800;
   color: #eef2f8;
 }
 
 .area-box-limit {
-  font-size: 13px;
+  font-size: 14px;
   color: #718fad;
   margin-left: auto;
   border: 1px solid #30395c;
   border-radius: 6px;
-  padding: 3px 10px;
+  padding: 4px 12px;
 }
 
 .area-box-desc {
-  font-size: 14px;
+  font-size: 15px;
   color: #6a8aaa;
   padding-bottom: 4px;
   border-bottom: 1px solid #1a2035;
@@ -448,7 +455,7 @@ const exampleActivities = [
 }
 
 .activity-name {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #d0e0f0;
   white-space: nowrap;
@@ -457,17 +464,17 @@ const exampleActivities = [
 }
 
 .activity-sub {
-  font-size: 12px;
+  font-size: 13px;
   color: #5a7090;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .area-box-footer {
-  font-size: 14px;
+  font-size: 15px;
   color: #6a8aaa;
   padding-top: 4px;
   border-top: 1px solid #1a2035;
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 .area-box-footer strong {
