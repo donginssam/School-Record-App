@@ -1,7 +1,7 @@
 <script setup>
 import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import {invoke} from '@tauri-apps/api/core'
-import {ArrowLeftRight, Pin, PinOff} from 'lucide-vue-next'
+import {ArrowLeftRight, Minimize2, Pin, PinOff} from 'lucide-vue-next'
 import {useAreaStore} from '../stores/area'
 
 const areaStore = useAreaStore()
@@ -11,6 +11,7 @@ const gridData = ref(null)
 const loading = ref(false)
 const freezeColumns = ref(true)
 const smartScroll = ref(true)
+const compactCell = ref(true)
 const collapsedActivities = ref(new Set())
 
 function toggleActivity(actId) {
@@ -47,8 +48,10 @@ watch(selectedAreaId, async (id) => {
     cellContent.value = map
     savingState.value = new Map()
     collapsedActivities.value = new Set()
-    await nextTick()
-    document.querySelectorAll('.cell-input').forEach(el => autoResize(el))
+    if (!compactCell.value) {
+      await nextTick()
+      document.querySelectorAll('.cell-input').forEach(el => autoResize(el))
+    }
   } catch (e) {
     console.error(e)
     gridData.value = null
@@ -75,7 +78,19 @@ function getCellSavingState(activityId, studentId) {
 
 function autoResize(el) {
   el.style.height = 'auto'
-  el.style.height = Math.min(el.scrollHeight, 300) + 'px'
+  el.style.height = el.scrollHeight + 'px'
+}
+
+async function toggleCompactCell() {
+  compactCell.value = !compactCell.value
+  await nextTick()
+  document.querySelectorAll('.cell-input').forEach(el => {
+    if (compactCell.value) {
+      el.style.height = ''
+    } else {
+      autoResize(el)
+    }
+  })
 }
 
 function onCellInput(activityId, studentId, event) {
@@ -84,7 +99,7 @@ function onCellInput(activityId, studentId, event) {
   const map = new Map(cellContent.value)
   map.set(key, content)
   cellContent.value = map
-  autoResize(event.target)
+  if (!compactCell.value) autoResize(event.target)
 
   // debounce 저장
   if (debounceTimers.has(key)) {
@@ -224,6 +239,15 @@ function isNewGroup(students, index) {
           <ArrowLeftRight :size="15"/>
           {{ smartScroll ? '스마트스크롤 ON' : '스마트스크롤 OFF' }}
         </button>
+        <button
+            class="btn-freeze"
+            :class="compactCell ? 'btn-freeze--on' : ''"
+            @click="toggleCompactCell"
+            title="셀 높이: 고정(ON) / 자동(OFF)"
+        >
+          <Minimize2 :size="15"/>
+          {{ compactCell ? '셀높이 고정' : '셀높이 자동' }}
+        </button>
       </div>
     </div>
 
@@ -356,6 +380,7 @@ function isNewGroup(students, index) {
             <template v-if="!collapsedActivities.has(act.id)">
               <textarea
                   class="cell-input"
+                  :class="{ 'cell-input--compact': compactCell }"
                   :value="getCellContent(act.id, student.id)"
                   @input="onCellInput(act.id, student.id, $event)"
                   rows="1"
@@ -697,7 +722,11 @@ thead .sticky {
   outline: none;
   transition: border-color 0.15s, background-color 0.15s;
   min-height: 60px;
-  max-height: 300px;
+  overflow-y: auto;
+}
+
+.cell-input--compact {
+  max-height: 60px;
   overflow-y: auto;
 }
 
