@@ -333,25 +333,25 @@ function isNewGroup(students, index) {
         >
           <td
               class="td-fixed td-grade"
-              :class="freezeColumns ? 'sticky' : ''"
+              :class="[freezeColumns ? 'sticky' : '', isStudentOverLimit(student.id) ? 'td-row--over' : '']"
               style="left: 0"
           >{{ student.grade }}
           </td>
           <td
               class="td-fixed td-class"
-              :class="freezeColumns ? 'sticky' : ''"
+              :class="[freezeColumns ? 'sticky' : '', isStudentOverLimit(student.id) ? 'td-row--over' : '']"
               style="left: 48px"
           >{{ student.class_num }}
           </td>
           <td
               class="td-fixed td-number"
-              :class="freezeColumns ? 'sticky' : ''"
+              :class="[freezeColumns ? 'sticky' : '', isStudentOverLimit(student.id) ? 'td-row--over' : '']"
               style="left: 96px"
           >{{ student.number }}
           </td>
           <td
               class="td-fixed td-name"
-              :class="freezeColumns ? 'sticky' : ''"
+              :class="[freezeColumns ? 'sticky' : '', isStudentOverLimit(student.id) ? 'td-row--over' : '']"
               style="left: 144px"
           >{{ student.name }}
           </td>
@@ -686,8 +686,9 @@ thead .sticky {
   vertical-align: middle;
 }
 
+.td-row--over,
 .td-total--over {
-  background-color: #1a0c0c !important;
+  background-color: #4a1212 !important;
 }
 
 .total-bytes {
@@ -696,8 +697,8 @@ thead .sticky {
 }
 
 .total-bytes--over {
-  color: #f87171;
-  font-weight: 600;
+  color: #ff9090;
+  font-weight: 700;
 }
 
 /* 반 구분선 */
