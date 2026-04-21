@@ -99,7 +99,7 @@ function handleDelete() {
             <input
                 v-model="name"
                 class="field-input"
-                placeholder="예: 자율활동"
+                placeholder="예: 자율활동, 진로활동"
                 @keydown.enter="submit"
             />
           </div>
