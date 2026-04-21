@@ -854,6 +854,8 @@ fn bulk_import_records(
 
         let &student_id = student_cache.get(&key).unwrap();
 
+        save_snapshot_internal(conn, r.activity_id, student_id, Some("import"))?;
+
         conn.execute(
             "INSERT INTO ActivityRecord (activity_id, student_id, content, updated_at)
              VALUES (?1, ?2, ?3, datetime('now'))
@@ -863,8 +865,6 @@ fn bulk_import_records(
             rusqlite::params![r.activity_id, student_id, r.content],
         )
             .map_err(|e| e.to_string())?;
-
-        save_snapshot_internal(conn, r.activity_id, student_id, Some("import"))?;
         records_saved += 1;
     }
 
