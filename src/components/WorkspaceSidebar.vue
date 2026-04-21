@@ -208,7 +208,7 @@ const navGroups = [
 
 .nav-divider {
   height: 1px;
-  background-color: #1a2035;
+  background-color: #263246;
   margin: 6px 4px;
 }
 
