@@ -28,6 +28,16 @@ fn migrate(conn: &Connection, from: u32) -> Result<()> {
     // SQLite 권고: 테이블 재생성(RENAME/CREATE/DROP) 포함 마이그레이션은
     // foreign_keys OFF 상태에서 실행해야 후속 구문에서 이름 변경된 테이블을 인식한다.
     conn.execute_batch("PRAGMA foreign_keys = OFF;")?;
+
+    // 정상 종료·오류 종료 모두 foreign_keys = ON 복구를 보장하는 스코프 가드
+    struct FkGuard<'a>(&'a Connection);
+    impl Drop for FkGuard<'_> {
+        fn drop(&mut self) {
+            let _ = self.0.execute_batch("PRAGMA foreign_keys = ON;");
+        }
+    }
+    let _guard = FkGuard(conn);
+
     for v in from..SCHEMA_VERSION {
         let idx = v as usize;
         // 배열 범위 초과 시 rusqlite 오류로 변환 (패닉 방지)
@@ -41,7 +51,6 @@ fn migrate(conn: &Connection, from: u32) -> Result<()> {
             next = v + 1
         ))?;
     }
-    conn.execute_batch("PRAGMA foreign_keys = ON;")?;
     Ok(())
 }
 
