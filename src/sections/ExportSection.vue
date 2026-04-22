@@ -50,7 +50,7 @@ const estimatedRows = computed(() => {
 const typeLabel = computed(() => {
   if (exportType.value === 'A') return 'A타입 — 행 단위 활동 형식'
   if (exportType.value === 'B') return 'B타입 — 열 단위 활동 형식'
-  if (exportType.value === 'C') return 'C타입 — 합본 형식'
+  if (exportType.value === 'C') return 'C타입 — 나이스(NEIS) 문장 형식'
   return ''
 })
 
