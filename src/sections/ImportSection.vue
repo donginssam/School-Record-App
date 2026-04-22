@@ -639,7 +639,10 @@ function resetWizard() {
       <!-- Step 2: 양식 선택 -->
       <div v-else-if="step === 2" class="step-content">
         <h3 class="step-title">엑셀 파일 양식 선택</h3>
-        <p class="step-desc">가져올 엑셀 파일 양식에 맞는 타입을 선택하세요.</p>
+        <p class="step-desc">
+          가져올 엑셀 파일 양식에 맞는 타입을 선택하세요.
+          잘못된 타입을 선택하면 데이터 오류 또는 항목 누락이 발생할 수 있습니다.
+        </p>
 
         <div class="type-cards">
           <div
@@ -751,7 +754,7 @@ function resetWizard() {
       <!-- Step 3: 열 매핑 -->
       <div v-else-if="step === 3" class="step-content">
         <h3 class="step-title">열 매핑</h3>
-        <p class="step-desc">파일의 각 열을 해당 필드에 연결하세요. <span class="required">*</span> 는 필수입니다.</p>
+        <p class="step-desc">엑셀 파일의 각 열을 올바르게 연결하세요. <span class="required">*</span> 는 필수입니다.</p>
 
         <!-- 학생 식별 방식 토글 -->
         <div class="id-mode-section">
