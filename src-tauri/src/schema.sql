@@ -49,17 +49,6 @@ CREATE TABLE IF NOT EXISTS AreaStudent
     FOREIGN KEY (student_id) REFERENCES Student (id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ActivityDisplayOrder
-(
-    area_id       INTEGER NOT NULL,
-    student_id    INTEGER NOT NULL,
-    activity_id   INTEGER NOT NULL,
-    display_order INTEGER NOT NULL,
-    PRIMARY KEY (area_id, student_id, activity_id),
-    FOREIGN KEY (area_id, student_id) REFERENCES AreaStudent (area_id, student_id) ON DELETE CASCADE,
-    FOREIGN KEY (area_id, activity_id) REFERENCES AreaActivity (area_id, activity_id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS ActivityRecord
 (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,7 +62,7 @@ CREATE TABLE IF NOT EXISTS ActivityRecord
 );
 
 -- ================================================================
--- 이력 및 스냅샷
+-- 이력
 -- ================================================================
 
 CREATE TABLE IF NOT EXISTS ActivityRecordHistory
@@ -86,15 +75,6 @@ CREATE TABLE IF NOT EXISTS ActivityRecordHistory
     FOREIGN KEY (activity_record_id) REFERENCES ActivityRecord (id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS Snapshot
-(
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    name        TEXT NOT NULL,
-    description TEXT,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    file_name   TEXT NOT NULL
-);
-
 -- ================================================================
 -- 인덱스
 -- ================================================================
@@ -104,5 +84,4 @@ CREATE INDEX IF NOT EXISTS idx_record_student ON ActivityRecord (student_id);
 CREATE INDEX IF NOT EXISTS idx_areastudent_student ON AreaStudent (student_id);
 CREATE INDEX IF NOT EXISTS idx_areaactivity_activity ON AreaActivity (activity_id);
 CREATE INDEX IF NOT EXISTS idx_areastudent_order ON AreaStudent (area_id, is_order_customized);
-CREATE INDEX IF NOT EXISTS idx_displayorder_areaactivity ON ActivityDisplayOrder (activity_id, area_id);
 

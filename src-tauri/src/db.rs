@@ -3,35 +3,12 @@ use std::path::Path;
 
 /// 현재 앱이 지원하는 스키마 버전.
 /// 스키마 변경 시 이 값을 올리고 MIGRATIONS 배열에 SQL을 추가한다.
-pub const SCHEMA_VERSION: u32 = 3;
+pub const SCHEMA_VERSION: u32 = 1;
 
 /// 인덱스 i: 버전 i → i+1 로 올리는 SQL.
-/// [0] v0→v1: 버전 도입 이전 DB를 v1으로 승격. 스키마는 IF NOT EXISTS로 생성되어 있으므로 SQL 없음.
-/// [1] v1→v2: 1초 단위 트리거 제거 — 히스토리 저장을 앱 레이어에서 명시적으로 제어.
+/// /// [0] v0→v1: 버전 도입 이전 DB를 v1으로 승격. 스키마는 IF NOT EXISTS로 생성되어 있으므로 SQL 없음.
 const MIGRATIONS: &[&str] = &[
-    // v0 → v1
-    "",
-
-    // v1 → v2
-    "DROP TRIGGER IF EXISTS trg_record_history;",
-
-    // v2 → v3
-    "DROP TRIGGER IF EXISTS trg_display_order_on_activity_add;
-     ALTER TABLE Area RENAME TO Area_old;
-     CREATE TABLE Area (
-         id         INTEGER PRIMARY KEY AUTOINCREMENT,
-         name       TEXT    NOT NULL UNIQUE,
-         byte_limit INTEGER NOT NULL
-     );
-     INSERT INTO Area SELECT * FROM Area_old;
-     DROP TABLE Area_old;
-     ALTER TABLE Activity RENAME TO Activity_old;
-     CREATE TABLE Activity (
-         id   INTEGER PRIMARY KEY AUTOINCREMENT,
-         name TEXT NOT NULL UNIQUE
-     );
-     INSERT INTO Activity SELECT * FROM Activity_old;
-     DROP TABLE Activity_old;",
+    "", // v0 → v1
 ];
 
 // ── 내부 헬퍼 ────────────────────────────────────────────────
