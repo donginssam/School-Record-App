@@ -1,7 +1,7 @@
 <script setup>
 import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {invoke} from '@tauri-apps/api/core'
-import {ArrowLeftRight, CircleAlert, Minimize2, MousePointerClick, Pin, PinOff} from 'lucide-vue-next'
+import {ArrowLeftRight, CircleAlert, Minimize2, Pin, PinOff} from 'lucide-vue-next'
 import {useAreaStore} from '../stores/area'
 import CellHistoryModal from '../components/CellHistoryModal.vue'
 
@@ -259,23 +259,8 @@ function isNewGroup(students, index) {
 
       <!-- 상단 컨트롤 -->
       <div class="toolbar">
-        <div class="toolbar-left">
-          <div class="section-wrap">
-            <h2 class="section-title">생기부 작성</h2>
-            <div class="section-tips">
-            <span class="tip">
-              <MousePointerClick :size="12"/>
-              헤더 클릭 → 열 접기/펼치기
-            </span>
-              <span class="tip">
-              <ArrowLeftRight :size="12"/>
-              스마트스크롤 ON → 활동 열 스크롤 시 가로 이동
-            </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="toolbar-right">
+        <div class="toolbar-row-primary">
+          <h2 class="section-title">생기부 작성</h2>
           <select
               v-model="selectedAreaId"
               class="area-select"
@@ -288,6 +273,9 @@ function isNewGroup(students, index) {
             >{{ area.name }}
             </option>
           </select>
+        </div>
+
+        <div class="toolbar-row-secondary">
           <button
               class="btn-freeze"
               :class="freezeColumns ? 'btn-freeze--on' : ''"
@@ -502,60 +490,32 @@ function isNewGroup(students, index) {
 /* 툴바 */
 .toolbar {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  padding: 36px 40px;
+  flex-direction: column;
+  padding: 28px 40px 20px;
   border-bottom: 1px solid #1a2035;
   flex-shrink: 0;
-  gap: 16px;
+  gap: 10px;
 }
 
-.toolbar-left {
+.toolbar-row-primary {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
 }
 
-.toolbar-right {
+.toolbar-row-secondary {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.section-wrap {
-  height: 100%;
-  box-sizing: border-box;
-  overflow-y: auto;
 }
 
 .section-title {
   font-size: 22px;
   font-weight: 700;
   color: #e2e8f0;
-  margin: 0 0 6px;
-  white-space: nowrap;
-}
-
-.section-tips {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-
-.tip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: #98bcd8;
-  background: rgba(26, 32, 53, 0.7);
-  border: 1px solid #1a2035;
-  border-radius: 6px;
-  padding: 3px 10px;
+  margin: 0;
   white-space: nowrap;
 }
 
