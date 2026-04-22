@@ -783,7 +783,7 @@ fn save_snapshot_internal(
     note: Option<&str>,
 ) -> Result<(), String> {
     // 해당 버전 항목이 없을 때만 INSERT
-    conn.execute(
+    let inserted = conn.execute(
         "INSERT INTO ActivityRecordHistory (activity_record_id, content, changed_at, note)
          SELECT r.id, r.content, r.updated_at, ?3
          FROM ActivityRecord r
@@ -798,19 +798,21 @@ fn save_snapshot_internal(
     .map_err(|e| e.to_string())?;
 
     // 이미 존재하면 note만 갱신
-    conn.execute(
-        "UPDATE ActivityRecordHistory SET note = ?3
-         WHERE activity_record_id = (
-             SELECT r.id FROM ActivityRecord r
-             WHERE r.activity_id = ?1 AND r.student_id = ?2
-         )
-         AND changed_at = (
-             SELECT r.updated_at FROM ActivityRecord r
-             WHERE r.activity_id = ?1 AND r.student_id = ?2
-         )",
-        rusqlite::params![activity_id, student_id, note],
-    )
-    .map_err(|e| e.to_string())?;
+    if inserted == 0 {
+        conn.execute(
+            "UPDATE ActivityRecordHistory SET note = ?3
+             WHERE activity_record_id = (
+                 SELECT r.id FROM ActivityRecord r
+                 WHERE r.activity_id = ?1 AND r.student_id = ?2
+             )
+             AND changed_at = (
+                 SELECT r.updated_at FROM ActivityRecord r
+                 WHERE r.activity_id = ?1 AND r.student_id = ?2
+             )",
+            rusqlite::params![activity_id, student_id, note],
+        )
+        .map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }
