@@ -875,7 +875,7 @@ fn bulk_import_records(
                         }
                     }
                 } else {
-                    let name = r.name.as_deref().unwrap_or("");
+                    let name = r.name.as_deref().unwrap_or("이름 없음");
                     conn.execute(
                         "INSERT INTO Student (grade, class_num, number, name) VALUES (?1, ?2, ?3, ?4)",
                         rusqlite::params![r.grade, r.class_num, r.number, name],
