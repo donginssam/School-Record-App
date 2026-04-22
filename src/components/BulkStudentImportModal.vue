@@ -48,7 +48,8 @@ const parsedRows = computed(() => {
     const classNum = Number(row[ci])
     const number = Number(row[ni])
     const name = String(row[nmi] ?? '').trim()
-    if (!grade && !classNum && !number && !name) return
+    const isEmpty = (v) => v == null || String(v).trim() === ''
+    if (isEmpty(row[gi]) && isEmpty(row[ci]) && isEmpty(row[ni]) && !name) return
     const errs = []
     if (!grade || isNaN(grade) || grade < 1) errs.push('학년 오류')
     if (!classNum || isNaN(classNum) || classNum < 1) errs.push('반 오류')
