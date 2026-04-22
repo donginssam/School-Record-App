@@ -48,11 +48,18 @@ function validate() {
 
 function submit() {
   if (!validate()) return
+  error.value = ''
   emit('saved', {
     name: name.value.trim(),
     areaIds: [...selectedAreaIds.value],
   })
 }
+
+function setServerError(msg) {
+  error.value = msg
+}
+
+defineExpose({ setServerError })
 
 function handleDelete() {
   if (!confirmDelete.value) {

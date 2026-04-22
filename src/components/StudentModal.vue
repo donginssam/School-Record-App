@@ -51,6 +51,7 @@ function validate() {
 
 function submit() {
   if (!validate()) return
+  error.value = ''
   emit('saved', {
     grade: Number(grade.value),
     classNum: Number(classNum.value),
@@ -58,6 +59,12 @@ function submit() {
     name: name.value.trim(),
   })
 }
+
+function setServerError(msg) {
+  error.value = msg
+}
+
+defineExpose({ setServerError })
 
 function handleDelete() {
   if (!confirmDelete.value) {

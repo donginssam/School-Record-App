@@ -18,6 +18,7 @@ const sortedActivities = computed(() =>
 const modalVisible = ref(false)
 const modalMode = ref('add')       // 'add' | 'edit'
 const selectedActivity = ref(null)
+const activityModalRef = ref(null)
 
 onMounted(() => {
   activityStore.fetchActivities()
@@ -55,7 +56,7 @@ async function handleSaved({name, areaIds}) {
     await areaStore.fetchAreas()  // ActivityDetail.areas 반영
     closeModal()
   } catch (e) {
-    console.error(e)
+    activityModalRef.value?.setServerError(String(e))
   }
 }
 
@@ -125,6 +126,7 @@ async function handleDeleted() {
     <!-- 모달 -->
     <transition name="modal">
       <ActivityModal
+          ref="activityModalRef"
           v-if="modalVisible"
           :mode="modalMode"
           :activity="selectedActivity"

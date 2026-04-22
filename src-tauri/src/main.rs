@@ -11,9 +11,9 @@ use tauri::State;
 
 struct DbState(Mutex<Option<Connection>>);
 
-fn unique_err(e: &rusqlite::Error, kind: &str, name: &str) -> String {
+fn unique_err(e: &rusqlite::Error, conflict_msg: &str) -> String {
     if e.to_string().contains("UNIQUE constraint failed") {
-        format!("이미 같은 이름의 {kind}이 있습니다: {name}")
+        conflict_msg.to_string()
     } else {
         e.to_string()
     }
@@ -155,7 +155,7 @@ fn create_area(name: String, byte_limit: i64, state: State<DbState>) -> Result<i
         "INSERT INTO Area (name, byte_limit) VALUES (?1, ?2)",
         rusqlite::params![name, byte_limit],
     )
-        .map_err(|e| unique_err(&e, "영역", &name))?;
+        .map_err(|e| unique_err(&e, &format!("이미 같은 이름의 영역이 있습니다: {name}")))?;
 
     Ok(conn.last_insert_rowid())
 }
@@ -171,7 +171,7 @@ fn update_area(id: i64, name: String, byte_limit: i64, state: State<DbState>) ->
         "UPDATE Area SET name = ?1, byte_limit = ?2 WHERE id = ?3",
         rusqlite::params![name, byte_limit, id],
     )
-        .map_err(|e| unique_err(&e, "영역", &name))?;
+        .map_err(|e| unique_err(&e, &format!("이미 같은 이름의 영역이 있습니다: {name}")))?;
 
     Ok(())
 }
@@ -261,7 +261,7 @@ fn create_activity(name: String, state: State<DbState>) -> Result<i64, String> {
         "INSERT INTO Activity (name) VALUES (?1)",
         rusqlite::params![name],
     )
-        .map_err(|e| unique_err(&e, "활동", &name))?;
+        .map_err(|e| unique_err(&e, &format!("이미 같은 이름의 활동이 있습니다: {name}")))?;
 
     Ok(conn.last_insert_rowid())
 }
@@ -277,7 +277,7 @@ fn update_activity(id: i64, name: String, state: State<DbState>) -> Result<(), S
         "UPDATE Activity SET name = ?1 WHERE id = ?2",
         rusqlite::params![name, id],
     )
-        .map_err(|e| unique_err(&e, "활동", &name))?;
+        .map_err(|e| unique_err(&e, &format!("이미 같은 이름의 활동이 있습니다: {name}")))?;
 
     Ok(())
 }
@@ -390,7 +390,7 @@ fn create_student(
         "INSERT INTO Student (grade, class_num, number, name) VALUES (?1, ?2, ?3, ?4)",
         rusqlite::params![grade, class_num, number, name],
     )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| unique_err(&e, &format!("이미 같은 학번의 학생이 있습니다: {grade}학년 {class_num}반 {number}번")))?;
 
     Ok(conn.last_insert_rowid())
 }
@@ -413,7 +413,7 @@ fn update_student(
         "UPDATE Student SET grade = ?1, class_num = ?2, number = ?3, name = ?4 WHERE id = ?5",
         rusqlite::params![grade, class_num, number, name, id],
     )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| unique_err(&e, &format!("이미 같은 학번의 학생이 있습니다: {grade}학년 {class_num}반 {number}번")))?;
 
     Ok(())
 }

@@ -21,6 +21,7 @@ const sortedAreas = computed(() =>
 const modalVisible = ref(false)
 const modalMode = ref('add')       // 'add' | 'edit'
 const selectedArea = ref(null)
+const areaModalRef = ref(null)
 
 // 학생 배정 모달 상태
 const studentModalVisible = ref(false)
@@ -64,7 +65,7 @@ async function handleSaved({name, byteLimit, activityIds}) {
     await activityStore.fetchActivities()  // ActivityDetail.areas 갱신
     closeModal()
   } catch (e) {
-    console.error(e)
+    areaModalRef.value?.setServerError(String(e))
   }
 }
 
@@ -157,6 +158,7 @@ async function handleStudentSaved(studentIds) {
     <!-- 영역 편집 모달 -->
     <transition name="modal">
       <AreaModal
+          ref="areaModalRef"
           v-if="modalVisible"
           :mode="modalMode"
           :area="selectedArea"

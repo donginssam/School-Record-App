@@ -59,12 +59,19 @@ function toggleActivity(id) {
 
 function submit() {
   if (!validate()) return
+  error.value = ''
   emit('saved', {
     name: name.value.trim(),
     byteLimit: Number(byteLimit.value),
     activityIds: [...selectedIds.value],
   })
 }
+
+function setServerError(msg) {
+  error.value = msg
+}
+
+defineExpose({ setServerError })
 
 function handleDelete() {
   if (!confirmDelete.value) {

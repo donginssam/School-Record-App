@@ -11,6 +11,7 @@ const studentStore = useStudentStore()
 const modalVisible = ref(false)
 const modalMode = ref('add')
 const selectedStudent = ref(null)
+const studentModalRef = ref(null)
 const bulkModalVisible = ref(false)
 
 onMounted(() => {
@@ -63,7 +64,7 @@ async function handleSaved({grade, classNum, number, name}) {
     }
     closeModal()
   } catch (e) {
-    console.error(e)
+    studentModalRef.value?.setServerError(String(e))
   }
 }
 
@@ -178,6 +179,7 @@ async function handleDeleted() {
     <!-- 학생 추가/수정 모달 -->
     <transition name="modal">
       <StudentModal
+          ref="studentModalRef"
           v-if="modalVisible"
           :mode="modalMode"
           :student="selectedStudent"
