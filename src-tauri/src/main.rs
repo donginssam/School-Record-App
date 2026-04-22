@@ -494,27 +494,22 @@ fn bulk_upsert_students(
         let mut inserted: i64 = 0;
         let mut updated: i64 = 0;
         for s in students.iter() {
-            let exists: bool = conn
-                .query_row(
-                    "SELECT COUNT(*) FROM Student WHERE grade=?1 AND class_num=?2 AND number=?3",
-                    rusqlite::params![s.grade, s.class_num, s.number],
-                    |row| row.get::<_, i64>(0),
-                )
-                .map_err(|e| e.to_string())?
-                > 0;
-
             conn.execute(
-                "INSERT INTO Student (grade, class_num, number, name)
-                 VALUES (?1, ?2, ?3, ?4)
-                 ON CONFLICT (grade, class_num, number) DO UPDATE SET name = excluded.name",
+                "INSERT OR IGNORE INTO Student (grade, class_num, number, name)
+                 VALUES (?1, ?2, ?3, ?4)",
                 rusqlite::params![s.grade, s.class_num, s.number, s.name],
             )
                 .map_err(|e| e.to_string())?;
 
-            if exists {
-                updated += 1;
-            } else {
+            if conn.changes() > 0 {
                 inserted += 1;
+            } else {
+                conn.execute(
+                    "UPDATE Student SET name = ?1 WHERE grade=?2 AND class_num=?3 AND number=?4",
+                    rusqlite::params![s.name, s.grade, s.class_num, s.number],
+                )
+                    .map_err(|e| e.to_string())?;
+                updated += 1;
             }
         }
         Ok(BulkUpsertResult { inserted, updated })
