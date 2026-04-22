@@ -877,9 +877,9 @@ fn bulk_import_records(
                                 rusqlite::params![n, r.grade, r.class_num, r.number],
                             )
                                 .map_err(|e| e.to_string())?;
-                            students_updated += 1;
                         }
                     }
+                    students_updated += 1;
                 } else {
                     let name = r.name.as_deref().unwrap_or("이름 없음");
                     conn.execute(
