@@ -940,7 +940,12 @@ fn bulk_import_records(
                     "INSERT INTO ActivityRecordHistory (activity_record_id, content, changed_at, note)
                      SELECT r.id, r.content, r.updated_at, 'import'
                      FROM ActivityRecord r
-                     WHERE r.activity_id = ?1 AND r.student_id = ?2",
+                     WHERE r.activity_id = ?1 AND r.student_id = ?2
+                       AND NOT EXISTS (
+                           SELECT 1 FROM ActivityRecordHistory h
+                           WHERE h.activity_record_id = r.id
+                             AND h.changed_at = r.updated_at
+                       )",
                     rusqlite::params![r.activity_id, student_id],
                 )
                     .map_err(|e| e.to_string())?;
