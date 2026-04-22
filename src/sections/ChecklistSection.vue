@@ -67,21 +67,21 @@ async function goNext() {
     gridData.value = await invoke('get_area_grid', {areaId: selectedAreaId.value})
     const {activities, students, records} = gridData.value
     previewRows.value = students.flatMap(student =>
-      activities.map(activity => {
-        const rec = records.find(r => r.student_id === student.id && r.activity_id === activity.id)
-        const content = rec?.content?.trim() ?? ''
-        return {
-          studentId: student.id,
-          grade: student.grade,
-          classNum: student.class_num,
-          number: student.number,
-          name: student.name,
-          activityId: activity.id,
-          activityName: activity.name,
-          hasContent: !!content,
-          topic: content ? extractTopic(content) : '',
-        }
-      })
+        activities.map(activity => {
+          const rec = records.find(r => r.student_id === student.id && r.activity_id === activity.id)
+          const content = rec?.content?.trim() ?? ''
+          return {
+            studentId: student.id,
+            grade: student.grade,
+            classNum: student.class_num,
+            number: student.number,
+            name: student.name,
+            activityId: activity.id,
+            activityName: activity.name,
+            hasContent: !!content,
+            topic: content ? extractTopic(content) : '',
+          }
+        })
     )
   }
   step.value++
@@ -105,20 +105,35 @@ function resetWizard() {
 function extractTopic(content) {
   if (!content?.trim()) return ''
 
-  // 첫 문장 추출: 점(.) 기준
-  const dotIdx = content.indexOf('.')
-  const firstSentence = dotIdx >= 0 ? content.slice(0, dotIdx).trim() : null
+  // 1) 첫 문장 추출 (오탐 완화)
+  const sentenceMatch = content.match(
+      /(.+?[.!?]["”’]?)(?=\s+[A-Z가-힣]|$)/s
+  )
 
-  if (firstSentence) {
-    // 큰/작은따옴표(직선·곡선·한국어 꺾쇠) 로 감싸진 부분 추출
-    const m = firstSentence.match(/["""''「『]([^"""''」』]+)["""''」』]/u)
-    if (m) return m[1]
-    return firstSentence
+  const firstSentence = sentenceMatch
+      ? sentenceMatch[1].trim()
+      : content.split(/\r?\n/)[0].slice(0, 100).trim()
+
+  // 2) 바깥쪽 따옴표 추출 (길이 제한 포함)
+  const quotePatterns = [
+    /"([^"]{1,120})"/,
+    /“([^”]{1,120})”/,
+    /'([^']{1,120})'/,
+    /‘([^’]{1,120})’/,
+    /「([^」]{1,120})」/,
+    /『([^』]{1,120})』/
+  ]
+
+  for (const p of quotePatterns) {
+    const m = firstSentence.match(p)
+    if (m) return m[1].trim()
   }
 
-  // 점이 없는 경우: 100자 이내
-  return content.trim().slice(0, 100)
+  // 3) fallback (길이 제한 + 말줄임)
+  const trimmed = firstSentence.slice(0, 100).trim()
+  return trimmed + (firstSentence.length > 100 ? '…' : '')
 }
+
 
 // ── 내보내기 헬퍼 ────────────────────────────────────────────
 
@@ -154,7 +169,7 @@ function addStudentBlock(worksheet, student, studentRows, showPreview) {
 
   // ── 활동 헤더 행 ──────────────────────────────────────────
   const headerRow = worksheet.addRow(
-    showPreview ? ['활동명', '참여여부', '활동주제'] : ['활동명', '참여여부'],
+      showPreview ? ['활동명', '참여여부', '활동주제'] : ['활동명', '참여여부'],
   )
   headerRow.height = 24
   styleCell(headerRow.getCell(1), {size: 13, bold: true, fill: 'FFD9D9D9'})
@@ -166,7 +181,7 @@ function addStudentBlock(worksheet, student, studentRows, showPreview) {
     const ox = pr.hasContent ? 'O' : 'X'
     const topic = showPreview ? (pr.topic ?? '') : ''
     const row = worksheet.addRow(
-      showPreview ? [pr.activityName, ox, topic] : [pr.activityName, ox],
+        showPreview ? [pr.activityName, ox, topic] : [pr.activityName, ox],
     )
     styleCell(row.getCell(1), {wrapText: true})       // 활동명: 줄 바꿈
     styleCell(row.getCell(2))
@@ -175,7 +190,7 @@ function addStudentBlock(worksheet, student, studentRows, showPreview) {
 
   // ── 서명 행 (페이지 나누기 기준점) ────────────────────────
   const signRow = worksheet.addRow(
-    showPreview ? ['학생 서명', '', ''] : ['학생 서명', ''],
+      showPreview ? ['학생 서명', '', ''] : ['학생 서명', ''],
   )
   signRow.height = 30
   styleCell(signRow.getCell(1), {bold: true})
@@ -319,7 +334,7 @@ async function doExport() {
         <h3 class="step-title">미리보기 & 편집</h3>
         <p class="step-desc">
           활동 참여 여부를 확인하고
-          <template v-if="previewEnabled">추출된 활동주제를 직접 수정한 뒤 </template>
+          <template v-if="previewEnabled">추출된 활동주제를 직접 수정한 뒤</template>
           내보내기 단계로 이동하세요.
         </p>
 
@@ -717,8 +732,13 @@ async function doExport() {
   width: 60px;
 }
 
-.cell-ox--o { color: #34d399; }
-.cell-ox--x { color: #64748b; }
+.cell-ox--o {
+  color: #34d399;
+}
+
+.cell-ox--x {
+  color: #64748b;
+}
 
 .cell-topic {
   min-width: 180px;
