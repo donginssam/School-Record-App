@@ -77,8 +77,16 @@ fn new_project(path: String, state: State<DbState>) -> Result<(), String> {
 
 #[tauri::command]
 fn open_project(path: String, state: State<DbState>) -> Result<(), String> {
-    let conn = db::open_existing(std::path::Path::new(&path))
-        .map_err(|e| e.to_string())?;
+    let src = std::path::Path::new(&path);
+
+    if let Some(parent) = src.parent() {
+        let stem = src.file_stem().and_then(|s| s.to_str()).unwrap_or("backup");
+        let ts = chrono::Local::now().format("%y%m%d-%H%M").to_string();
+        let bak_name = format!("{stem}.{ts}.db.backup");
+        let _ = std::fs::copy(src, parent.join(bak_name));
+    }
+
+    let conn = db::open_existing(src).map_err(|e| e.to_string())?;
     *state.0.lock().unwrap() = Some(conn);
     Ok(())
 }
