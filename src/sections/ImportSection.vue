@@ -188,6 +188,7 @@ function processFile(file) {
 
 function parseStudentId(val) {
   const s = String(val ?? '').trim().replace(/\D/g, '')
+  if (s.length === 4) return {grade: +s[0], classNum: +s[1], number: +s.slice(2, 4)}
   if (s.length === 5) return {grade: +s[0], classNum: +s.slice(1, 3), number: +s.slice(3, 5)}
   if (s.length === 6) return {grade: +s[0], classNum: +s.slice(1, 3), number: +s.slice(3, 6)}
   return null
@@ -786,7 +787,8 @@ function resetWizard() {
               </select>
             </div>
             <div v-if="colMap['studentId'] !== null" class="sid-preview">
-              <p class="sid-preview-label">파싱 미리보기 (5자리: ABBCC · 6자리: ABBCCC)</p>
+              <p class="sid-preview-label">파싱 미리보기
+                (ABCC·4자리, ABBCC·5자리, ABBCCC·6자리 / A=학년, B=반, C=번호)</p>
               <table class="preview-table sid-preview-table">
                 <thead>
                 <tr>
