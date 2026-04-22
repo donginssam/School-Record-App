@@ -1,6 +1,7 @@
 <script setup>
 import {computed, ref, watch} from 'vue'
 import {invoke} from '@tauri-apps/api/core'
+import {save} from '@tauri-apps/plugin-dialog'
 import {ArrowLeft, ArrowRight, Download, FileSpreadsheet} from 'lucide-vue-next'
 import * as XLSX from 'xlsx'
 
@@ -323,7 +324,7 @@ async function doImport() {
 
 // ── 예시 파일 다운로드 ─────────────────────────────────────────
 
-function downloadSampleA() {
+async function downloadSampleA() {
   const rows = [
     {학년: 3, 반: 1, 번호: 1, 이름: '학생A', 활동명: '현장체험학습', 활동내용: '지역 기관을 탐방하며 사회적 기능을 이해하고 성실히 활동에 참여함.'},
     {학년: 3, 반: 1, 번호: 1, 이름: '학생A', 활동명: '학급자치회', 활동내용: '회의에 적극 참여하여 의견을 제시하고 의사결정에 기여함.'},
@@ -349,10 +350,19 @@ function downloadSampleA() {
   const wb = XLSX.utils.book_new()
   const ws = XLSX.utils.json_to_sheet(rows)
   XLSX.utils.book_append_sheet(wb, ws, '예시')
-  XLSX.writeFile(wb, 'A타입_예시.xlsx')
+
+  const filePath = await save({
+    title: 'A타입 예시 파일 저장',
+    defaultPath: 'A타입_예시.xlsx',
+    filters: [{name: 'Excel 파일', extensions: ['xlsx']}],
+  })
+  if (!filePath) return
+
+  const data = XLSX.write(wb, {type: 'base64', bookType: 'xlsx'})
+  await invoke('write_bytes_file', {path: filePath, data})
 }
 
-function downloadSampleB() {
+async function downloadSampleB() {
   const cols = ['학년', '반', '번호', '이름', '현장체험학습', '학급자치회', '전교학생회', '체육대회', '독서토론', '실험실 안전교육', '재난 대비 훈련']
   const empty = () => Object.fromEntries(cols.map(c => [c, '']))
   const rows = [
@@ -415,7 +425,16 @@ function downloadSampleB() {
   const wb = XLSX.utils.book_new()
   const ws = XLSX.utils.json_to_sheet(rows, {header: cols})
   XLSX.utils.book_append_sheet(wb, ws, '예시')
-  XLSX.writeFile(wb, 'B타입_예시.xlsx')
+
+  const filePath = await save({
+    title: 'B타입 예시 파일 저장',
+    defaultPath: 'B타입_예시.xlsx',
+    filters: [{name: 'Excel 파일', extensions: ['xlsx']}],
+  })
+  if (!filePath) return
+
+  const data = XLSX.write(wb, {type: 'base64', bookType: 'xlsx'})
+  await invoke('write_bytes_file', {path: filePath, data})
 }
 
 function resetWizard() {
