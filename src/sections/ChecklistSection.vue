@@ -197,7 +197,11 @@ function addStudentBlock(worksheet, student, studentRows, showPreview) {
   styleCell(signRow.getCell(2))
   if (showPreview) styleCell(signRow.getCell(3))
 
-  return signRow
+  // ── 빈 구분 행 ────────────────────────────────────────────
+  const finalRow = worksheet.addRow([])
+  finalRow.height = 6
+
+  return finalRow
 }
 
 // ── 내보내기 실행 ─────────────────────────────────────────────
