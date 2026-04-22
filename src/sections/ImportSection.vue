@@ -976,7 +976,7 @@ function resetWizard() {
 /* Step 2: 타입 카드 */
 .type-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(max(300px, calc(50% - 8px)), 1fr));
   gap: 16px;
 }
 
