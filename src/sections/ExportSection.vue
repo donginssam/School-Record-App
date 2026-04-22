@@ -291,7 +291,7 @@ async function doExport() {
                   <th>반</th>
                   <th>번호</th>
                   <th>이름</th>
-                  <th>자율활동 (영역명)</th>
+                  <th>영역명</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -299,22 +299,36 @@ async function doExport() {
                   <td>3</td>
                   <td>1</td>
                   <td>1</td>
-                  <td>홍길동</td>
-                  <td>학급 회장으로... 로봇 동아리에서...</td>
+                  <td>학생A</td>
+                  <td>지역 기관을 탐방... 회의에 적극 참여... 학교 행사 기획에 참여... 경기와 응원에 적극 참여...</td>
                 </tr>
                 <tr>
                   <td>3</td>
                   <td>1</td>
                   <td>2</td>
-                  <td>김철수</td>
-                  <td>독서 동아리에서...</td>
+                  <td>학생B</td>
+                  <td>다양한 종목에 참여...</td>
                 </tr>
                 <tr>
                   <td>3</td>
                   <td>1</td>
                   <td>3</td>
-                  <td>박영희</td>
-                  <td>부회장으로... 컴퓨터 동아리에서...</td>
+                  <td>학생C</td>
+                  <td>도서를 바탕으로 자신의 생각... 실험 전 안전 점검을 철저히...</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>1</td>
+                  <td>5</td>
+                  <td>학생E</td>
+                  <td>학급 행사 준비 과정에서...</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>1</td>
+                  <td>7</td>
+                  <td>학생G</td>
+                  <td>현장 경험을 통해 배운 내용을 바탕으로... 안전 수칙을 준수하며...</td>
                 </tr>
                 </tbody>
               </table>
