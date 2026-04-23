@@ -212,6 +212,12 @@ function isStudentEmpty(studentId) {
   return studentTotalBytes(studentId) === 0
 }
 
+// 셀 내용 클립보드 복사
+async function copyCell(activityId, studentId) {
+  const content = getCellContent(activityId, studentId)
+  await navigator.clipboard.writeText(content)
+}
+
 // 히스토리 모달
 const historyModal = ref(null) // { activityId, studentId, activityName, studentName }
 
@@ -434,6 +440,8 @@ function isNewGroup(students, index) {
               />
                 <div class="byte-counter" :class="isOverLimit(act.id, student.id) ? 'byte-counter--over' : ''">
                   {{ byteLength(getCellContent(act.id, student.id) || '') }} Bytes
+                  <span class="history-sep">|</span>
+                  <button class="btn-history" @click.stop="copyCell(act.id, student.id)">Copy</button>
                   <span class="history-sep">|</span>
                   <button class="btn-history" @click.stop="openHistory(act, student)">History</button>
                 </div>
