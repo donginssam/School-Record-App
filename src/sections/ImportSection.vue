@@ -3,6 +3,7 @@ import {computed, ref, watch} from 'vue'
 import {invoke} from '@tauri-apps/api/core'
 import {save} from '@tauri-apps/plugin-dialog'
 import {ArrowLeft, ArrowRight, Download, FileSpreadsheet} from 'lucide-vue-next'
+import DiffView from '../components/DiffView.vue'
 import {Workbook} from 'exceljs'
 
 const COL_ALIASES = {
@@ -57,6 +58,14 @@ const importing = ref(false)
 const importResult = ref(null)
 const importError = ref('')
 
+// ── Diff 미리보기 상태 ────────────────────────────────────────
+const previewLoading = ref(false)
+const previewError = ref('')
+const previewItems = ref([])
+const checkedKeys = ref(new Set())
+const diffViewMode = ref('raw')
+const pendingRecords = ref([])
+
 // ── Computed ──────────────────────────────────────────────────
 
 const previewRows = computed(() => rawData.value.slice(0, 5))
@@ -81,6 +90,7 @@ const canGoNext = computed(() => {
     return required.every(f => m[f] !== null)
   }
   if (step.value === 4) return extractedActivities.value.length > 0
+  if (step.value === 5) return !previewLoading.value
   return false
 })
 
@@ -116,6 +126,23 @@ const activityColIndices = computed(() => {
       .filter(({index}) => !mapped.has(index))
 })
 
+const changedPreviewItems = computed(() =>
+  previewItems.value.filter(item => item.existing_content !== '' && item.existing_content !== item.new_content)
+)
+const newPreviewItemsCount = computed(() =>
+  previewItems.value.filter(item => item.existing_content === '').length
+)
+const unchangedCount = computed(() =>
+  previewItems.value.filter(item => item.existing_content !== '' && item.existing_content === item.new_content).length
+)
+const checkedChangedCount = computed(() =>
+  changedPreviewItems.value.filter(item => checkedKeys.value.has(item.key)).length
+)
+const allChangedChecked = computed(() =>
+  changedPreviewItems.value.length > 0 &&
+  changedPreviewItems.value.every(item => checkedKeys.value.has(item.key))
+)
+
 const studentIdPreviewRows = computed(() => {
   const col = colMap.value.studentId
   if (col === null) return []
@@ -125,6 +152,22 @@ const studentIdPreviewRows = computed(() => {
     return parsed ? {raw, ...parsed, error: false} : {raw, grade: '?', classNum: '?', number: '?', error: true}
   })
 })
+
+// ── 공통 헬퍼 ────────────────────────────────────────────────
+
+function resolveIdentity(row) {
+  const m = colMap.value
+  if (idMode.value === 'studentId') {
+    const p = parseStudentId(row[m.studentId])
+    if (!p) return null
+    return {grade: p.grade, class_num: p.classNum, number: p.number}
+  }
+  const grade = Number(row[m.grade])
+  const class_num = Number(row[m.classNum])
+  const number = Number(row[m.number])
+  if (!grade || !class_num || !number) return null
+  return {grade, class_num, number}
+}
 
 // ── 파일 처리 ─────────────────────────────────────────────────
 
@@ -287,6 +330,9 @@ async function goNext() {
     await loadDbActivities()
     initActivityMatchMap()
   }
+  if (step.value === 4) {
+    await loadPreview()
+  }
   step.value++
 }
 
@@ -312,6 +358,128 @@ function initActivityMatchMap() {
   activityMatchMap.value = map
 }
 
+// ── Diff 미리보기 로드 ────────────────────────────────────────
+
+function toggleAllChanged() {
+  const s = new Set(checkedKeys.value)
+  if (allChangedChecked.value) {
+    changedPreviewItems.value.forEach(item => s.delete(item.key))
+  } else {
+    changedPreviewItems.value.forEach(item => s.add(item.key))
+  }
+  checkedKeys.value = s
+}
+
+function toggleItem(key) {
+  const s = new Set(checkedKeys.value)
+  if (s.has(key)) s.delete(key)
+  else s.add(key)
+  checkedKeys.value = s
+}
+
+async function loadPreview() {
+  previewLoading.value = true
+  previewError.value = ''
+  previewItems.value = []
+  checkedKeys.value = new Set()
+  pendingRecords.value = []
+
+  try {
+    const m = colMap.value
+    const existingActRecords = []
+    const newActRawItems = []
+
+    function buildPending(row, identity, actName, activity_id, content) {
+      const name = m.name !== null ? (String(row[m.name] ?? '').trim() || null) : null
+      const previewKey = activity_id > 0
+        ? `${activity_id}-${identity.grade}-${identity.class_num}-${identity.number}`
+        : `new-${actName}-${identity.grade}-${identity.class_num}-${identity.number}`
+      return {grade: identity.grade, class_num: identity.class_num, number: identity.number, name, activity_id, activity_name: actName, content, previewKey}
+    }
+
+    if (fileType.value === 'A') {
+      for (const row of rawData.value) {
+        const identity = resolveIdentity(row)
+        if (!identity) continue
+        const actName = String(row[m.activityName] ?? '').trim()
+        const content = String(row[m.activityContent] ?? '').trim()
+        if (!actName || !content) continue
+        const activity_id = activityMatchMap.value[actName]
+        if (activity_id === undefined) continue
+        const rec = buildPending(row, identity, actName, activity_id, content)
+        if (activity_id > 0) existingActRecords.push(rec)
+        else newActRawItems.push(rec)
+      }
+    } else {
+      for (const row of rawData.value) {
+        const identity = resolveIdentity(row)
+        if (!identity) continue
+        for (const {name: actName, index} of activityColIndices.value) {
+          const content = String(row[index] ?? '').trim()
+          if (!content) continue
+          const activity_id = activityMatchMap.value[actName]
+          if (activity_id === undefined) continue
+          const rec = buildPending(row, identity, actName, activity_id, content)
+          if (activity_id > 0) existingActRecords.push(rec)
+          else newActRawItems.push(rec)
+        }
+      }
+    }
+
+    pendingRecords.value = [...existingActRecords, ...newActRawItems]
+
+    let backendItems = []
+    if (existingActRecords.length > 0) {
+      backendItems = await invoke('preview_import_records', {
+        records: existingActRecords.map(r => ({
+          grade: r.grade, class_num: r.class_num, number: r.number,
+          name: r.name, activity_id: r.activity_id, content: r.content,
+        }))
+      })
+    }
+
+    const allItems = [
+      ...backendItems.map(item => ({
+        key: `${item.activity_id}-${item.grade}-${item.class_num}-${item.number}`,
+        grade: item.grade,
+        class_num: item.class_num,
+        number: item.number,
+        student_name: item.student_name,
+        activity_id: item.activity_id,
+        activity_name: item.activity_name,
+        new_content: item.new_content,
+        existing_content: item.existing_content,
+      })),
+      ...newActRawItems.map(r => ({
+        key: r.previewKey,
+        grade: r.grade,
+        class_num: r.class_num,
+        number: r.number,
+        student_name: r.name || `${r.grade}학년 ${r.class_num}반 ${r.number}번`,
+        activity_id: r.activity_id,
+        activity_name: r.activity_name,
+        new_content: r.content,
+        existing_content: '',
+      })),
+    ]
+
+    previewItems.value = allItems
+
+    const initChecked = new Set()
+    for (const item of allItems) {
+      if (item.existing_content !== '' && item.existing_content !== item.new_content) {
+        initChecked.add(item.key)
+      }
+    }
+    checkedKeys.value = initChecked
+
+  } catch (e) {
+    previewError.value = '미리보기 로드 실패: ' + String(e)
+  } finally {
+    previewLoading.value = false
+  }
+}
+
 // ── 가져오기 실행 ─────────────────────────────────────────────
 
 async function doImport() {
@@ -328,49 +496,32 @@ async function doImport() {
     }
 
     const records = []
-    const m = colMap.value
+    for (const pending of pendingRecords.value) {
+      const activity_id = pending.activity_id > 0
+        ? pending.activity_id
+        : finalMap[pending.activity_name]
+      if (!activity_id) continue
 
-    function resolveIdentity(row) {
-      if (idMode.value === 'studentId') {
-        const p = parseStudentId(row[m.studentId])
-        if (!p) return null
-        return {grade: p.grade, class_num: p.classNum, number: p.number}
+      const previewItem = previewItems.value.find(p => p.key === pending.previewKey)
+
+      let include = false
+      if (!previewItem || previewItem.existing_content === '') {
+        include = true
+      } else if (previewItem.existing_content === previewItem.new_content) {
+        include = false
+      } else {
+        include = checkedKeys.value.has(pending.previewKey)
       }
-      const grade = Number(row[m.grade])
-      const class_num = Number(row[m.classNum])
-      const number = Number(row[m.number])
-      if (!grade || !class_num || !number) return null
-      return {grade, class_num, number}
-    }
 
-    if (fileType.value === 'A') {
-      for (const row of rawData.value) {
-        const identity = resolveIdentity(row)
-        if (!identity) continue
-        const actName = String(row[m.activityName] ?? '').trim()
-        const content = String(row[m.activityContent] ?? '').trim()
-        if (!actName || !content) continue
-        const activity_id = finalMap[actName]
-        if (!activity_id) continue
+      if (include) {
         records.push({
-          ...identity, activity_id, content,
-          name: m.name !== null ? (String(row[m.name] ?? '').trim() || null) : null,
+          grade: pending.grade,
+          class_num: pending.class_num,
+          number: pending.number,
+          name: pending.name,
+          activity_id,
+          content: pending.content,
         })
-      }
-    } else {
-      for (const row of rawData.value) {
-        const identity = resolveIdentity(row)
-        if (!identity) continue
-        for (const {name: actName, index} of activityColIndices.value) {
-          const content = String(row[index] ?? '').trim()
-          if (!content) continue
-          const activity_id = finalMap[actName]
-          if (!activity_id) continue
-          records.push({
-            ...identity, activity_id, content,
-            name: m.name !== null ? (String(row[m.name] ?? '').trim() || null) : null,
-          })
-        }
       }
     }
 
@@ -531,6 +682,12 @@ function resetWizard() {
   importing.value = false
   importResult.value = null
   importError.value = ''
+  previewLoading.value = false
+  previewError.value = ''
+  previewItems.value = []
+  checkedKeys.value = new Set()
+  diffViewMode.value = 'raw'
+  pendingRecords.value = []
 }
 </script>
 
@@ -542,7 +699,7 @@ function resetWizard() {
       <h2 class="section-title">데이터 가져오기</h2>
       <div class="step-indicator">
         <span
-            v-for="n in 5"
+            v-for="n in 6"
             :key="n"
             class="step-dot"
             :class="{ 'step-dot--active': step === n, 'step-dot--done': step > n }"
@@ -954,8 +1111,108 @@ function resetWizard() {
         </div>
       </div>
 
-      <!-- Step 5: 실행 -->
+      <!-- Step 5: 변경사항 확인 -->
       <div v-else-if="step === 5" class="step-content">
+        <h3 class="step-title">변경사항 확인</h3>
+        <p class="step-desc">기존 데이터와 비교하여 변경될 항목을 확인하고 업데이트할 항목을 선택하세요.</p>
+
+        <div v-if="previewLoading" class="diff-loading">기존 데이터와 비교 중...</div>
+        <p v-if="previewError" class="error-text">{{ previewError }}<br><span class="error-hint">미리보기 오류가 있어도 다음 단계로 진행하면 모든 항목이 가져와집니다.</span></p>
+
+        <template v-if="!previewLoading">
+          <!-- 통계 바 -->
+          <div class="diff-stats-bar">
+            <span class="diff-stat diff-stat--changed">변경 {{ changedPreviewItems.length }}건</span>
+            <span class="diff-stat diff-stat--new">신규 {{ newPreviewItemsCount }}건</span>
+            <span class="diff-stat diff-stat--same">동일 {{ unchangedCount }}건</span>
+          </div>
+
+          <!-- 변경 항목 없음 -->
+          <div v-if="changedPreviewItems.length === 0" class="diff-empty">
+            <p class="diff-empty-msg">변경되는 항목이 없습니다.</p>
+            <p v-if="newPreviewItemsCount > 0" class="diff-empty-sub">신규 기록 {{ newPreviewItemsCount }}건이 자동으로 추가됩니다.</p>
+            <p v-if="unchangedCount > 0" class="diff-empty-sub">{{ unchangedCount }}건은 기존과 동일하여 건너뜁니다.</p>
+          </div>
+
+          <!-- 변경 항목 목록 -->
+          <template v-else>
+            <div class="diff-controls">
+              <label class="diff-select-all">
+                <input
+                  type="checkbox"
+                  :checked="allChangedChecked"
+                  @change="toggleAllChanged"
+                />
+                전체 선택/해제
+                <span class="diff-count">({{ checkedChangedCount }}/{{ changedPreviewItems.length }})</span>
+              </label>
+              <div class="diff-mode-buttons">
+                <button
+                  class="diff-mode-btn"
+                  :class="{ 'diff-mode-btn--active': diffViewMode === 'raw' }"
+                  @click="diffViewMode = 'raw'"
+                >원문 보기</button>
+                <button
+                  class="diff-mode-btn"
+                  :class="{ 'diff-mode-btn--active': diffViewMode === 'diff' }"
+                  @click="diffViewMode = 'diff'"
+                >변경사항 보기</button>
+              </div>
+            </div>
+
+            <div class="diff-list">
+              <div
+                v-for="item in changedPreviewItems"
+                :key="item.key"
+                class="diff-item"
+                :class="{ 'diff-item--unchecked': !checkedKeys.has(item.key) }"
+              >
+                <div class="diff-item-header">
+                  <input
+                    type="checkbox"
+                    class="diff-checkbox"
+                    :checked="checkedKeys.has(item.key)"
+                    @change="toggleItem(item.key)"
+                  />
+                  <span class="diff-student-label">
+                    {{ item.grade }}학년 {{ item.class_num }}반 {{ item.number }}번
+                    <template v-if="item.student_name"> · {{ item.student_name }}</template>
+                  </span>
+                  <span class="diff-separator">|</span>
+                  <span class="diff-activity-label">{{ item.activity_name }}</span>
+                </div>
+                <div class="diff-boxes">
+                  <div class="diff-box">
+                    <div class="diff-box-label">기존</div>
+                    <div class="diff-box-content">{{ item.existing_content }}</div>
+                  </div>
+                  <div class="diff-box diff-box--after">
+                    <div class="diff-box-label">변경 후</div>
+                    <div class="diff-box-content">
+                      <DiffView
+                        v-if="diffViewMode === 'diff'"
+                        :before="item.existing_content"
+                        :after="item.new_content"
+                      />
+                      <template v-else>{{ item.new_content }}</template>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p v-if="newPreviewItemsCount > 0" class="diff-auto-note diff-auto-note--new">
+              + 신규 기록 {{ newPreviewItemsCount }}건은 자동으로 추가됩니다.
+            </p>
+            <p v-if="unchangedCount > 0" class="diff-auto-note diff-auto-note--same">
+              {{ unchangedCount }}건은 기존과 동일하여 건너뜁니다.
+            </p>
+          </template>
+        </template>
+      </div>
+
+      <!-- Step 6: 실행 -->
+      <div v-else-if="step === 6" class="step-content">
         <h3 class="step-title">가져오기 실행</h3>
 
         <div v-if="!importResult">
@@ -1040,7 +1297,7 @@ function resetWizard() {
         <ArrowLeft :size="15"/>
         이전
       </button>
-      <button v-if="step < 5" class="btn-next" :disabled="!canGoNext" @click="goNext">
+      <button v-if="step < 6" class="btn-next" :disabled="!canGoNext" @click="goNext">
         다음
         <ArrowRight :size="15"/>
       </button>
@@ -1752,5 +2009,224 @@ function resetWizard() {
 .btn-next:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* Step 5: Diff 미리보기 */
+.diff-loading {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--clr-text-subtle);
+  font-size: 15px;
+}
+
+.error-hint {
+  font-size: 12px;
+  color: var(--clr-text-hint);
+}
+
+.diff-stats-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.diff-stat {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid;
+}
+
+.diff-stat--changed {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.diff-stat--new {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.diff-stat--same {
+  color: var(--clr-text-hint);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: #1a2035;
+}
+
+.diff-empty {
+  padding: 40px 0;
+  text-align: center;
+}
+
+.diff-empty-msg {
+  font-size: 16px;
+  color: #e2e8f0;
+  margin: 0 0 8px;
+}
+
+.diff-empty-sub {
+  font-size: 14px;
+  color: var(--clr-text-subtle);
+  margin: 4px 0 0;
+}
+
+.diff-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.diff-select-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #c8d8f0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.diff-select-all input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #3b5bdb;
+}
+
+.diff-count {
+  color: var(--clr-text-hint);
+  font-size: 13px;
+}
+
+.diff-mode-buttons {
+  display: flex;
+  border: 1px solid #1a2035;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.diff-mode-btn {
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  color: var(--clr-text-subtle);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.diff-mode-btn + .diff-mode-btn {
+  border-left: 1px solid #1a2035;
+}
+
+.diff-mode-btn--active {
+  background: rgba(59, 91, 219, 0.12);
+  color: #7ba8f0;
+}
+
+.diff-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diff-item {
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: opacity 0.2s, border-color 0.2s;
+}
+
+.diff-item--unchecked {
+  opacity: 0.45;
+  border-color: #1a2035;
+}
+
+.diff-item-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(251, 191, 36, 0.05);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.15);
+}
+
+.diff-item--unchecked .diff-item-header {
+  background: #0d1220;
+  border-bottom-color: #1a2035;
+}
+
+.diff-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #3b5bdb;
+  flex-shrink: 0;
+}
+
+.diff-student-label {
+  font-size: 14px;
+  color: #c8d8f0;
+  font-weight: 600;
+}
+
+.diff-separator {
+  color: var(--clr-text-hint);
+  font-size: 13px;
+}
+
+.diff-activity-label {
+  font-size: 13px;
+  color: #fbbf24;
+}
+
+.diff-boxes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.diff-box {
+  padding: 12px 14px;
+}
+
+.diff-box + .diff-box {
+  border-left: 1px solid #1a2035;
+}
+
+.diff-box-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--clr-text-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.diff-box-content {
+  font-size: 13px;
+  color: #c8d8f0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.diff-auto-note {
+  font-size: 13px;
+  margin-top: 14px;
+}
+
+.diff-auto-note--new {
+  color: #34d399;
+}
+
+.diff-auto-note--same {
+  color: var(--clr-text-hint);
 }
 </style>

@@ -3,7 +3,7 @@
 
 mod db;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -977,6 +977,100 @@ fn bulk_import_records(
     }
 }
 
+// ── Import 미리보기 ───────────────────────────────────────────
+
+#[derive(Serialize)]
+struct PreviewImportItem {
+    grade: i64,
+    class_num: i64,
+    number: i64,
+    student_name: String,
+    activity_id: i64,
+    activity_name: String,
+    new_content: String,
+    existing_content: String,
+}
+
+#[tauri::command]
+fn preview_import_records(
+    records: Vec<ImportRecordInput>,
+    state: State<DbState>,
+) -> Result<Vec<PreviewImportItem>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    let mut result = Vec::new();
+    let mut student_cache: HashMap<(i64, i64, i64), Option<(i64, String)>> = HashMap::new();
+    let mut activity_cache: HashMap<i64, String> = HashMap::new();
+
+    for r in records.iter() {
+        let activity_name = if let Some(name) = activity_cache.get(&r.activity_id) {
+            name.clone()
+        } else {
+            let name: Option<String> = conn
+                .query_row(
+                    "SELECT name FROM Activity WHERE id = ?1",
+                    rusqlite::params![r.activity_id],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|e| e.to_string())?;
+            let name = name.unwrap_or_else(|| format!("활동 #{}", r.activity_id));
+            activity_cache.insert(r.activity_id, name.clone());
+            name
+        };
+
+        let key = (r.grade, r.class_num, r.number);
+        let student_info = if let Some(cached) = student_cache.get(&key) {
+            cached.clone()
+        } else {
+            let info: Option<(i64, String)> = conn
+                .query_row(
+                    "SELECT id, name FROM Student WHERE grade=?1 AND class_num=?2 AND number=?3",
+                    rusqlite::params![r.grade, r.class_num, r.number],
+                    |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
+                )
+                .optional()
+                .map_err(|e| e.to_string())?;
+            student_cache.insert(key, info.clone());
+            info
+        };
+
+        let (student_name, existing_content) = match student_info {
+            Some((student_id, name)) => {
+                let content: Option<String> = conn
+                    .query_row(
+                        "SELECT content FROM ActivityRecord WHERE activity_id=?1 AND student_id=?2",
+                        rusqlite::params![r.activity_id, student_id],
+                        |row| row.get(0),
+                    )
+                    .optional()
+                    .map_err(|e| e.to_string())?;
+                (name, content.unwrap_or_default())
+            }
+            None => {
+                let name = r.name.as_deref().unwrap_or("이름 없음").to_string();
+                (name, String::new())
+            }
+        };
+
+        result.push(PreviewImportItem {
+            grade: r.grade,
+            class_num: r.class_num,
+            number: r.number,
+            student_name,
+            activity_id: r.activity_id,
+            activity_name,
+            new_content: r.content.clone(),
+            existing_content,
+        });
+    }
+
+    Ok(result)
+}
+
 // ── 스냅샷 ───────────────────────────────────────────────────
 
 #[derive(Serialize)]
@@ -1170,6 +1264,7 @@ fn main() {
             get_record_history,
             save_history_snapshot,
             bulk_import_records,
+            preview_import_records,
             write_text_file,
             write_bytes_file,
             create_snapshot,
