@@ -106,8 +106,11 @@ function extractTopic(content) {
   if (!content?.trim()) return ''
 
   // 1) 첫 문장 추출
+  // - s 플래그 제거: .이 줄바꿈을 넘지 않도록
+  // - m 플래그 추가: $가 각 줄 끝과 매칭
+  // - \s*$ : 온점 뒤 공백만 남은 경우도 첫 문장으로 인정
   const sentenceMatch = content.match(
-      /(.+?[.!?]["”’]?)(?=\s+[A-Z가-힣]|$)/s
+      /^(.+?[.!?][\u201C\u201D\u2018\u2019\u0022\u0027]?)(?=\s+[A-Z가-힣]|\s*$)/m
   )
 
   const firstSentence = sentenceMatch
@@ -115,8 +118,12 @@ function extractTopic(content) {
       : content.split(/\r?\n/)[0].slice(0, 100).trim()
 
   // 2) 따옴표 내용 전부 수집
+  // 열기: “ (U+0022) ‘ (U+0027) “ “ ‘ ‘ 「 『
+  // 닫기: 위 + 」(U+300D) 』(U+300F) (「→」, 『→』 대응)
   const matches = [
-    ...firstSentence.matchAll(/["“‘「『]([^"”’」』]{1,120})["”’」』]/g)
+    ...firstSentence.matchAll(
+        /[\u0022\u0027\u201C\u201D\u2018\u2019\u300C\u300E]([^\u0022\u0027\u201C\u201D\u2018\u2019\u300D\u300F]{1,120})[\u0022\u0027\u201C\u201D\u2018\u2019\u300D\u300F]/g
+    )
   ]
 
   const values = matches
