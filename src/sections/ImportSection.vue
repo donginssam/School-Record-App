@@ -127,20 +127,20 @@ const activityColIndices = computed(() => {
 })
 
 const changedPreviewItems = computed(() =>
-  previewItems.value.filter(item => item.existing_content !== '' && item.existing_content !== item.new_content)
+    previewItems.value.filter(item => item.existing_content !== '' && item.existing_content !== item.new_content)
 )
 const newPreviewItemsCount = computed(() =>
-  previewItems.value.filter(item => item.existing_content === '').length
+    previewItems.value.filter(item => item.existing_content === '').length
 )
 const unchangedCount = computed(() =>
-  previewItems.value.filter(item => item.existing_content !== '' && item.existing_content === item.new_content).length
+    previewItems.value.filter(item => item.existing_content !== '' && item.existing_content === item.new_content).length
 )
 const checkedChangedCount = computed(() =>
-  changedPreviewItems.value.filter(item => checkedKeys.value.has(item.key)).length
+    changedPreviewItems.value.filter(item => checkedKeys.value.has(item.key)).length
 )
 const allChangedChecked = computed(() =>
-  changedPreviewItems.value.length > 0 &&
-  changedPreviewItems.value.every(item => checkedKeys.value.has(item.key))
+    changedPreviewItems.value.length > 0 &&
+    changedPreviewItems.value.every(item => checkedKeys.value.has(item.key))
 )
 
 const studentIdPreviewRows = computed(() => {
@@ -204,13 +204,17 @@ function parseCsv(text) {
     for (let i = 0; i < line.length; i++) {
       const ch = line[i]
       if (inQuotes) {
-        if (ch === '"' && line[i + 1] === '"') { field += '"'; i++ }
-        else if (ch === '"') inQuotes = false
+        if (ch === '"' && line[i + 1] === '"') {
+          field += '"';
+          i++
+        } else if (ch === '"') inQuotes = false
         else field += ch
       } else {
         if (ch === '"') inQuotes = true
-        else if (ch === ',') { row.push(field); field = '' }
-        else field += ch
+        else if (ch === ',') {
+          row.push(field);
+          field = ''
+        } else field += ch
       }
     }
     row.push(field)
@@ -392,9 +396,18 @@ async function loadPreview() {
     function buildPending(row, identity, actName, activity_id, content) {
       const name = m.name !== null ? (String(row[m.name] ?? '').trim() || null) : null
       const previewKey = activity_id > 0
-        ? `${activity_id}-${identity.grade}-${identity.class_num}-${identity.number}`
-        : `new-${actName}-${identity.grade}-${identity.class_num}-${identity.number}`
-      return {grade: identity.grade, class_num: identity.class_num, number: identity.number, name, activity_id, activity_name: actName, content, previewKey}
+          ? `${activity_id}-${identity.grade}-${identity.class_num}-${identity.number}`
+          : `new-${actName}-${identity.grade}-${identity.class_num}-${identity.number}`
+      return {
+        grade: identity.grade,
+        class_num: identity.class_num,
+        number: identity.number,
+        name,
+        activity_id,
+        activity_name: actName,
+        content,
+        previewKey
+      }
     }
 
     if (fileType.value === 'A') {
@@ -498,8 +511,8 @@ async function doImport() {
     const records = []
     for (const pending of pendingRecords.value) {
       const activity_id = pending.activity_id > 0
-        ? pending.activity_id
-        : finalMap[pending.activity_name]
+          ? pending.activity_id
+          : finalMap[pending.activity_name]
       if (!activity_id) continue
 
       const previewItem = previewItems.value.find(p => p.key === pending.previewKey)
@@ -1117,7 +1130,8 @@ function resetWizard() {
         <p class="step-desc">기존 데이터와 비교하여 변경될 항목을 확인하고 업데이트할 항목을 선택하세요.</p>
 
         <div v-if="previewLoading" class="diff-loading">기존 데이터와 비교 중...</div>
-        <p v-if="previewError" class="error-text">{{ previewError }}<br><span class="error-hint">미리보기 오류가 있어도 다음 단계로 진행하면 모든 항목이 가져와집니다.</span></p>
+        <p v-if="previewError" class="error-text">{{ previewError }}<br><span class="error-hint">미리보기 오류가 있어도 다음 단계로 진행하면 모든 항목이 가져와집니다.</span>
+        </p>
 
         <template v-if="!previewLoading">
           <!-- 통계 바 -->
@@ -1139,40 +1153,42 @@ function resetWizard() {
             <div class="diff-controls">
               <label class="diff-select-all">
                 <input
-                  type="checkbox"
-                  :checked="allChangedChecked"
-                  @change="toggleAllChanged"
+                    type="checkbox"
+                    :checked="allChangedChecked"
+                    @change="toggleAllChanged"
                 />
                 전체 선택/해제
                 <span class="diff-count">({{ checkedChangedCount }}/{{ changedPreviewItems.length }})</span>
               </label>
               <div class="diff-mode-buttons">
                 <button
-                  class="diff-mode-btn"
-                  :class="{ 'diff-mode-btn--active': diffViewMode === 'raw' }"
-                  @click="diffViewMode = 'raw'"
-                >원문 보기</button>
+                    class="diff-mode-btn"
+                    :class="{ 'diff-mode-btn--active': diffViewMode === 'raw' }"
+                    @click="diffViewMode = 'raw'"
+                >원문 보기
+                </button>
                 <button
-                  class="diff-mode-btn"
-                  :class="{ 'diff-mode-btn--active': diffViewMode === 'diff' }"
-                  @click="diffViewMode = 'diff'"
-                >변경사항 보기</button>
+                    class="diff-mode-btn"
+                    :class="{ 'diff-mode-btn--active': diffViewMode === 'diff' }"
+                    @click="diffViewMode = 'diff'"
+                >변경사항 보기
+                </button>
               </div>
             </div>
 
             <div class="diff-list">
               <div
-                v-for="item in changedPreviewItems"
-                :key="item.key"
-                class="diff-item"
-                :class="{ 'diff-item--unchecked': !checkedKeys.has(item.key) }"
+                  v-for="item in changedPreviewItems"
+                  :key="item.key"
+                  class="diff-item"
+                  :class="{ 'diff-item--unchecked': !checkedKeys.has(item.key) }"
               >
                 <div class="diff-item-header">
                   <input
-                    type="checkbox"
-                    class="diff-checkbox"
-                    :checked="checkedKeys.has(item.key)"
-                    @change="toggleItem(item.key)"
+                      type="checkbox"
+                      class="diff-checkbox"
+                      :checked="checkedKeys.has(item.key)"
+                      @change="toggleItem(item.key)"
                   />
                   <span class="diff-student-label">
                     {{ item.grade }}학년 {{ item.class_num }}반 {{ item.number }}번
@@ -1184,15 +1200,22 @@ function resetWizard() {
                 <div class="diff-boxes">
                   <div class="diff-box">
                     <div class="diff-box-label">기존</div>
-                    <div class="diff-box-content">{{ item.existing_content }}</div>
+                    <div class="diff-box-content">
+                      <DiffView
+                          v-if="diffViewMode === 'diff'"
+                          :before="item.new_content"
+                          :after="item.existing_content"
+                      />
+                      <template v-else>{{ item.existing_content }}</template>
+                    </div>
                   </div>
                   <div class="diff-box diff-box--after">
                     <div class="diff-box-label">변경 후</div>
                     <div class="diff-box-content">
                       <DiffView
-                        v-if="diffViewMode === 'diff'"
-                        :before="item.existing_content"
-                        :after="item.new_content"
+                          v-if="diffViewMode === 'diff'"
+                          :before="item.existing_content"
+                          :after="item.new_content"
                       />
                       <template v-else>{{ item.new_content }}</template>
                     </div>
@@ -2210,7 +2233,7 @@ function resetWizard() {
 }
 
 .diff-box-content {
-  font-size: 13px;
+  font-size: 14px;
   color: #c8d8f0;
   line-height: 1.6;
   white-space: pre-wrap;
