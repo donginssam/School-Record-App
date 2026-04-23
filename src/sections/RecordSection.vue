@@ -235,15 +235,11 @@ function isNewGroup(students, index) {
 
 <template>
   <div class="activity-section-wrapper">
-    <div class="section">
+    <div class="section" :class="{ 'section--frozen': freezeColumns }">
 
       <!-- 상단 컨트롤 -->
       <div class="toolbar">
-        <div class="toolbar-row-primary">
-          <div class="section-title-group">
-            <h2 class="section-title">생기부 작성</h2>
-            <p class="section-desc">영역(Area)을 선택하고 학생별 생기부 문장을 입력합니다.</p>
-          </div>
+        <div class="toolbar-primary">
           <select
               v-model="selectedAreaId"
               class="area-select"
@@ -258,7 +254,7 @@ function isNewGroup(students, index) {
           </select>
         </div>
 
-        <div class="toolbar-row-secondary">
+        <div class="toolbar-secondary">
           <button
               class="btn-freeze"
               :class="freezeColumns ? 'btn-freeze--on' : ''"
@@ -465,60 +461,41 @@ function isNewGroup(students, index) {
 .section {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
   box-sizing: border-box;
 }
 
-/* 툴바 */
+/* 틀고정 ON: section이 viewport 높이를 잡고 grid가 내부에서 자체 스크롤 → toolbar/thead 항상 상단 고정 */
+.section--frozen {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 툴바 — 한 줄 배치, 좁아지면 secondary가 다음 줄로 wrap */
 .toolbar {
   display: flex;
-  flex-direction: column;
-  padding: 36px 40px 24px 40px; /* 위 | 오른쪽 | 아래 | 왼쪽 */
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 12px 24px;
   border-bottom: 1px solid #1a2035;
   flex-shrink: 0;
-  gap: 10px;
+  gap: 8px 12px;
+  background-color: #080b14;
 }
 
-.toolbar-row-primary {
-  container-type: inline-size;
+.toolbar-primary {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.toolbar-row-secondary {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
   gap: 8px;
-}
-
-.section-title-group {
   min-width: 0;
 }
 
-.section-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #e2e8f0;
-  margin: 0 0 6px;
-  white-space: nowrap;
-}
-
-.section-desc {
-  font-size: 16px;
-  color: #7ba3d4;
-  margin: 0;
-  white-space: nowrap;
-}
-
-@container (max-width: 540px) {
-  .section-desc {
-    display: none;
-  }
+.toolbar-secondary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto; /* primary 오른쪽으로 밀고, wrap 시에도 오른쪽 정렬 유지 */
 }
 
 .area-select {
@@ -569,6 +546,7 @@ function isNewGroup(students, index) {
   align-items: center;
   justify-content: center;
   flex: 1;
+  min-height: 300px; /* 틀고정 OFF(section 높이 free)일 때 fallback */
   padding: 48px;
 }
 
@@ -580,8 +558,13 @@ function isNewGroup(students, index) {
   line-height: 1.7;
 }
 
-/* 그리드 */
+/* 그리드 — 기본(틀고정 OFF): 가로 스크롤만, 세로는 자연스럽게 늘어나서 workspace-main이 스크롤 (toolbar 함께 스크롤됨) */
 .grid-wrapper {
+  overflow-x: auto;
+}
+
+/* 틀고정 ON: grid-wrapper가 flex:1로 남은 영역을 잡고 자체 양방향 스크롤 → toolbar/thead 상단 고정 */
+.section--frozen .grid-wrapper {
   flex: 1;
   overflow: auto;
 }
@@ -593,11 +576,16 @@ function isNewGroup(students, index) {
   min-width: 100%;
 }
 
-/* 헤더 */
-.grid-table thead tr {
+/* 헤더 sticky — 틀고정 ON 일때만, tr이 아닌 th에 직접 적용 (브라우저 호환성 ↑) */
+.section--frozen .grid-table thead th {
   position: sticky;
   top: 0;
   z-index: 3;
+}
+
+/* 좌상단 코너(고정 열 ∩ 고정 행)는 z-index 더 높여 다른 헤더 위에 그려지도록 */
+.section--frozen .grid-table thead th.sticky {
+  z-index: 5;
 }
 
 .grid-table th {
