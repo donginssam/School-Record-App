@@ -370,7 +370,7 @@ async function doExport() {
                       v-if="row.hasContent"
                       v-model="row.topic"
                       class="topic-input"
-                      rows="1"
+                      rows="2"
                       placeholder="활동주제 입력…"
                   />
                 </td>
