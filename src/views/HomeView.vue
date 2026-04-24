@@ -136,15 +136,27 @@ function closeUpdateModal() {
             </svg>
           </button>
 
-          <button class="btn-update" @click="checkUpdate">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="1 4 1 10 7 10"/>
-              <polyline points="23 20 23 14 17 14"/>
-              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-            </svg>
-            업데이트 확인
-          </button>
+          <div class="action-row">
+            <button class="btn-update" @click="checkUpdate">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1 4 1 10 7 10"/>
+                <polyline points="23 20 23 14 17 14"/>
+                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+              </svg>
+              업데이트 확인
+            </button>
+
+            <button class="btn-update" @click="openUrl('https://luminousky.com/teacher-utility-kit/neis-editor/')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+              프로그램 소개
+            </button>
+          </div>
         </div>
 
         <!-- 에러 -->
@@ -409,12 +421,18 @@ function closeUpdateModal() {
   transform: translateX(2px);
 }
 
+.action-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
 .btn-update {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: 100%;
+  flex: 1;
   padding: 10px;
   background: none;
   border: 1px solid #2e3f60;
