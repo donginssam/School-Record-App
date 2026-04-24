@@ -30,10 +30,15 @@ export const useSynonymStore = defineStore('synonym', () => {
   }
 
   async function fetchRecords(scopeType = 'all', areaIds = []) {
-    records.value = await invoke('get_all_records_for_inspect', {
-      scopeType,
-      areaIds,
-    })
+    try {
+      records.value = await invoke('get_all_records_for_inspect', {
+        scopeType,
+        areaIds,
+      })
+    } catch (e) {
+      error.value = String(e)
+      throw e
+    }
   }
 
   async function createGroup(name) {
@@ -48,6 +53,13 @@ export const useSynonymStore = defineStore('synonym', () => {
 
   async function addWord(groupId, word) {
     await invoke('add_synonym_word', { groupId, word })
+    await fetchGroups()
+  }
+
+  async function addWordsBatch(groupId, words) {
+    for (const word of words) {
+      await invoke('add_synonym_word', { groupId, word })
+    }
     await fetchGroups()
   }
 
@@ -66,6 +78,7 @@ export const useSynonymStore = defineStore('synonym', () => {
     createGroup,
     deleteGroup,
     addWord,
+    addWordsBatch,
     deleteWord,
   }
 })

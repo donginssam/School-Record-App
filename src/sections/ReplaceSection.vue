@@ -35,6 +35,7 @@ const editingId = ref(null)
 const editForm = ref({oldText: '', newText: '', priority: 0})
 const editError = ref('')
 const operationError = ref('')
+const isAdjusting = ref(false)
 
 function startEdit(rule) {
   editingId.value = rule.id
@@ -73,6 +74,8 @@ async function toggleEnabled(rule) {
 }
 
 async function adjustPriority(rule, delta) {
+  if (isAdjusting.value) return
+  isAdjusting.value = true
   const newPriority = rule.priority + delta
   operationError.value = ''
   try {
@@ -81,6 +84,8 @@ async function adjustPriority(rule, delta) {
     )
   } catch (e) {
     operationError.value = e?.toString() ?? '수정 실패'
+  } finally {
+    isAdjusting.value = false
   }
 }
 
@@ -188,12 +193,22 @@ async function runApply() {
 
 function resetWizard() {
   step.value = 1
-  previewError.value = ''
-  applyError.value = ''
+  editingId.value = null
+  editError.value = ''
+  operationError.value = ''
+  isAdjusting.value = false
+  showAddForm.value = false
+  newRule.value = {oldText: '', newText: '', priority: 0}
+  addError.value = ''
+  scopeMode.value = 'all'
+  selectedAreaIds.value = []
   previewItems.value = []
-  applyResult.value = null
-  hasRanPreview.value = false
+  previewError.value = ''
   isPreviewing.value = false
+  hasRanPreview.value = false
+  showAllPreview.value = false
+  applyResult.value = null
+  applyError.value = ''
   isApplying.value = false
 }
 
@@ -314,11 +329,11 @@ onMounted(async () => {
               <!-- 표시 모드 -->
               <template v-else>
                 <div class="col-priority priority-ctrl">
-                  <button class="btn-icon-tiny" @click="adjustPriority(rule, -1)" title="우선순위 높이기">
+                  <button class="btn-icon-tiny" :disabled="isAdjusting" @click="adjustPriority(rule, -1)" title="우선순위 높이기">
                     <ChevronLeft :size="14"/>
                   </button>
                   <span class="priority-val">{{ rule.priority }}</span>
-                  <button class="btn-icon-tiny" @click="adjustPriority(rule, 1)" title="우선순위 낮추기">
+                  <button class="btn-icon-tiny" :disabled="isAdjusting" @click="adjustPriority(rule, 1)" title="우선순위 낮추기">
                     <ChevronRight :size="14"/>
                   </button>
                 </div>
@@ -326,7 +341,7 @@ onMounted(async () => {
                 <div class="col-old">
                   <span class="old-text">{{ rule.old_text }}</span>
                   <span
-                      v-if="rule.conflicts.length > 0"
+                      v-if="rule.conflicts?.length > 0"
                       class="conflict-badge"
                       :title="`충돌 규칙 ID: ${rule.conflicts.join(', ')}`"
                   >

@@ -2,6 +2,7 @@
 import {computed, onMounted, ref, watch} from 'vue'
 import {invoke} from '@tauri-apps/api/core'
 import {save} from '@tauri-apps/plugin-dialog'
+import {revealItemInDir} from '@tauri-apps/plugin-opener'
 import {Workbook} from 'exceljs'
 import {
   ArrowLeft,
@@ -35,6 +36,7 @@ watch(step, () => {
 
 const newGroupName = ref('')
 const addGroupError = ref('')
+const removeGroupError = ref('')
 const showAddGroup = ref(false)
 
 async function submitNewGroup() {
@@ -52,7 +54,12 @@ async function submitNewGroup() {
 
 async function removeGroup(id) {
   if (!confirm('그룹을 삭제하면 포함된 모든 단어도 삭제됩니다. 계속하시겠습니까?')) return
-  await store.deleteGroup(id)
+  removeGroupError.value = ''
+  try {
+    await store.deleteGroup(id)
+  } catch (e) {
+    removeGroupError.value = String(e)
+  }
 }
 
 // 단어 추가 (그룹별 입력)
@@ -96,9 +103,7 @@ async function submitCsv(groupId) {
   if (words.length === 0) return
   csvUploading.value[groupId] = true
   try {
-    for (const word of words) {
-      await store.addWord(groupId, word)
-    }
+    await store.addWordsBatch(groupId, words)
     csvInputs.value[groupId] = ''
   } finally {
     csvUploading.value[groupId] = false
@@ -109,6 +114,7 @@ async function submitCsv(groupId) {
 
 const selectedGroupIds = ref([])
 const searching = ref(false)
+const searchError = ref('')
 const inspectResults = ref([])
 
 function toggleGroup(id) {
@@ -160,10 +166,11 @@ async function startSearch() {
   if (selectedGroupIds.value.length === 0) return
   if (scopeMode.value === 'specific' && selectedAreaIds.value.length === 0) return
   searching.value = true
+  searchError.value = ''
   try {
     await store.fetchRecords(
-      scopeMode.value === 'all' ? 'all' : 'areas',
-      scopeMode.value === 'specific' ? selectedAreaIds.value : [],
+        scopeMode.value === 'all' ? 'all' : 'areas',
+        scopeMode.value === 'specific' ? selectedAreaIds.value : [],
     )
     inspectResults.value = performInspection(
         selectedGroupIds.value,
@@ -171,12 +178,18 @@ async function startSearch() {
         store.records,
     )
     step.value = 4
+  } catch (e) {
+    searchError.value = String(e)
   } finally {
     searching.value = false
   }
 }
 
 function backToScope() {
+  if (exportResult.value) {
+    exportResult.value = null
+    return
+  }
   inspectResults.value = []
   step.value = 3
 }
@@ -198,6 +211,7 @@ function bufferToBase64(buffer) {
 }
 
 const exporting = ref(false)
+const exportResult = ref(null)
 
 async function exportToExcel() {
   if (inspectResults.value.length === 0) {
@@ -240,7 +254,7 @@ async function exportToExcel() {
         grade: record.grade,
         class_num: record.class_num,
         number: record.number,
-        name: record.name,
+        name: record.student_name,
         area: record.area_name,
         activity: record.activity_name,
         content: record.content,
@@ -252,9 +266,27 @@ async function exportToExcel() {
     const buffer = await wb.xlsx.writeBuffer()
     const data = bufferToBase64(buffer)
     await invoke('write_bytes_file', {path: filePath, data})
+    exportResult.value = {
+      fileName: filePath.split(/[\\/]/).pop(),
+      filePath,
+      rowCount: inspectResults.value.length,
+    }
+    step.value++
   } finally {
     exporting.value = false
   }
+}
+
+function resetWizard() {
+  step.value = 1
+  selectedGroupIds.value = []
+  inspectResults.value = []
+  scopeMode.value = 'all'
+  selectedAreaIds.value = []
+  searching.value = false
+  searchError.value = ''
+  exporting.value = false
+  exportResult.value = null
 }
 
 // ── 초기화 ────────────────────────────────────────────────────
@@ -304,6 +336,9 @@ onMounted(() => {
 
         <template v-else>
 
+          <!-- 그룹 삭제 에러 -->
+          <div v-if="removeGroupError" class="error-box" style="margin-bottom: 12px;">{{ removeGroupError }}</div>
+
           <!-- 그룹 카드 목록 -->
           <div class="group-list">
             <div v-for="group in store.groups" :key="group.id" class="group-card">
@@ -343,9 +378,9 @@ onMounted(() => {
                 </button>
               </div>
 
-              <!-- CSV 일괄 업로드 -->
+              <!-- 유의어 일괄 등록 -->
               <details class="csv-section">
-                <summary class="csv-toggle">CSV 일괄 업로드</summary>
+                <summary class="csv-toggle">유의어 일괄 등록</summary>
                 <div class="csv-body">
                   <textarea
                       class="csv-textarea"
@@ -379,7 +414,10 @@ onMounted(() => {
                     @keydown.esc="showAddGroup = false; addGroupError = ''"
                     autofocus
                 />
-                <button class="btn-sm btn-primary" @click="submitNewGroup"><Plus :size="13"/>생성</button>
+                <button class="btn-sm btn-primary" @click="submitNewGroup">
+                  <Plus :size="13"/>
+                  생성
+                </button>
                 <button class="btn-ghost" @click="showAddGroup = false; addGroupError = ''">취소</button>
               </div>
               <p v-if="addGroupError" class="field-error">{{ addGroupError }}</p>
@@ -476,10 +514,13 @@ onMounted(() => {
               <span class="area-card-meta">활동 {{ area.activities.length }}개</span>
             </div>
           </div>
-          <p class="area-summary">
+          <p v-if="scopeMode === 'specific' && selectedAreaIds.length > 0" class="area-summary">
             {{ selectedAreaIds.length }}개 영역 선택됨
           </p>
         </div>
+
+        <!-- 검색 에러 -->
+        <div v-if="searchError" class="error-box" style="margin-bottom: 12px;">{{ searchError }}</div>
 
         <!-- 검색 시작 버튼 -->
         <button
@@ -495,6 +536,8 @@ onMounted(() => {
 
       <!-- ─── Step 4: 결과 보고 ──────────────────────────────── -->
       <div v-if="step === 4" class="step-content">
+
+        <!-- 점검 결과 테이블 -->
         <div class="step-header result-header">
           <div>
             <h3 class="step-title">Step 4. 점검 결과</h3>
@@ -542,22 +585,40 @@ onMounted(() => {
               <td class="cell-activity">{{ record.activity_name }}</td>
               <td class="cell-content">{{ record.content }}</td>
               <td class="cell-words">
-                  <span
-                      v-for="(word, i) in detectedWords"
-                      :key="i"
-                      class="word-badge"
-                  >{{ word }}</span>
+                    <span
+                        v-for="word in detectedWords"
+                        :key="word"
+                        class="word-badge"
+                    >{{ word }}</span>
               </td>
             </tr>
             </tbody>
           </table>
+        </div>
+
+      </div>
+
+      <!-- 내보내기 완료 화면 -->
+      <div v-if="step === 5 && exportResult" class="result-box">
+        <div class="result-check">✓</div>
+        <p class="result-title">내보내기 완료</p>
+        <div class="result-stats">
+          <div class="stat-item">
+            <span class="stat-val">{{ exportResult.rowCount }}</span>
+            <span class="stat-label">행 저장됨</span>
+          </div>
+        </div>
+        <p class="result-filename">{{ exportResult.fileName }}</p>
+        <div class="result-actions">
+          <button class="btn-reveal" @click="revealItemInDir(exportResult.filePath)">파일 확인</button>
+          <button class="btn-reset" @click="resetWizard">처음으로 돌아가기</button>
         </div>
       </div>
 
     </div>
 
     <!-- 하단 네비게이션 -->
-    <div class="wizard-footer">
+    <div v-if="!exportResult" class="wizard-footer">
       <button
           class="btn-prev"
           :disabled="step === 1"
@@ -1390,6 +1451,94 @@ onMounted(() => {
   font-size: 16px;
   color: #4a5568;
   margin: 0;
+}
+
+/* ── 내보내기 완료 화면 ──────────────────────────────────── */
+.result-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 64px 0;
+}
+
+.result-check {
+  font-size: 48px;
+  color: #34d399;
+}
+
+.result-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.result-stats {
+  display: flex;
+  gap: 32px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-val {
+  font-size: 36px;
+  font-weight: 700;
+  color: #7ba8f0;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #7c8db5;
+}
+
+.result-filename {
+  font-size: 13px;
+  color: #7c8db5;
+  margin: 0;
+}
+
+.result-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btn-reveal {
+  padding: 9px 24px;
+  background: rgba(59, 91, 219, 0.12);
+  border: 1px solid rgba(59, 91, 219, 0.35);
+  border-radius: 8px;
+  color: #7ba8f0;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-reveal:hover {
+  background: rgba(59, 91, 219, 0.22);
+  color: #93c5fd;
+}
+
+.btn-reset {
+  padding: 9px 24px;
+  background: none;
+  border: 1px solid #1a2035;
+  border-radius: 8px;
+  color: #7c8db5;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-reset:hover {
+  background: #1a2035;
+  color: #93afd4;
 }
 
 /* ── 유틸 ────────────────────────────────────────────────── */
