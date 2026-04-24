@@ -169,6 +169,7 @@ async function handleStudentSaved(studentIds) {
           :mode="modalMode"
           :area="selectedArea"
           :all-activities="activityStore.activities"
+          :submitting="saving"
           @close="closeModal"
           @saved="handleSaved"
           @deleted="handleDeleted"

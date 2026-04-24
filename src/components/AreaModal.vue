@@ -6,6 +6,7 @@ const props = defineProps({
   mode: {type: String, default: 'add'}, // 'add' | 'edit'
   area: {type: Object, default: null},
   allActivities: {type: Array, default: () => []},
+  submitting: {type: Boolean, default: false},
 })
 
 const emit = defineEmits(['close', 'saved', 'deleted'])
@@ -192,7 +193,7 @@ function handleDelete() {
 
         <div class="footer-right">
           <button class="btn-cancel" @click="emit('close')">취소</button>
-          <button class="btn-submit" @click="submit">
+          <button class="btn-submit" :disabled="submitting" @click="submit">
             {{ mode === 'add' ? '추가' : '저장' }}
           </button>
         </div>

@@ -1,24 +1,30 @@
 <script setup>
 import {onMounted, ref} from 'vue'
-import {invoke} from '@tauri-apps/api/core'
+import {useSnapshotStore} from '../stores/snapshot.js'
 import {GitBranch, Plus, RotateCcw, X} from 'lucide-vue-next'
 
 const emit = defineEmits(['close', 'restored'])
 
+const snapshotStore = useSnapshotStore()
+
 const snapshots = ref([])
 const loading = ref(false)
+const loadError = ref('')
 const creating = ref(false)
+const createError = ref('')
 const restoring = ref(false)
+const restoreError = ref('')
 const memoInput = ref('')
 const showCreateForm = ref(false)
 const confirmRestoreId = ref(null)
 
 async function loadSnapshots() {
   loading.value = true
+  loadError.value = ''
   try {
-    snapshots.value = await invoke('get_snapshots')
+    snapshots.value = await snapshotStore.fetchSnapshots()
   } catch (e) {
-    console.error('스냅샷 목록 조회 실패:', e)
+    loadError.value = String(e)
   } finally {
     loading.value = false
   }
@@ -27,16 +33,14 @@ async function loadSnapshots() {
 async function handleCreate() {
   if (creating.value) return
   creating.value = true
+  createError.value = ''
   try {
-    const newSnap = await invoke('create_snapshot', {
-      memo: memoInput.value.trim() || null,
-    })
+    const newSnap = await snapshotStore.createSnapshot(memoInput.value.trim())
     snapshots.value.unshift(newSnap)
     memoInput.value = ''
     showCreateForm.value = false
   } catch (e) {
-    console.error('스냅샷 생성 실패:', e)
-    alert(`스냅샷 생성 실패: ${e}`)
+    createError.value = String(e)
   } finally {
     creating.value = false
   }
@@ -45,14 +49,14 @@ async function handleCreate() {
 async function handleRestore() {
   if (confirmRestoreId.value === null) return
   restoring.value = true
+  restoreError.value = ''
   try {
-    await invoke('restore_snapshot', {snapshotId: confirmRestoreId.value})
+    await snapshotStore.restoreSnapshot(confirmRestoreId.value)
     confirmRestoreId.value = null
     emit('restored')
     emit('close')
   } catch (e) {
-    console.error('복원 실패:', e)
-    alert(`복원 실패: ${e}`)
+    restoreError.value = String(e)
   } finally {
     restoring.value = false
   }
@@ -108,12 +112,14 @@ onMounted(loadSnapshots)
               취소
             </button>
           </div>
+          <p v-if="createError" class="form-error">{{ createError }}</p>
         </template>
       </div>
 
       <!-- 스냅샷 목록 -->
       <div class="snapshot-list">
         <div v-if="loading" class="state-msg">불러오는 중...</div>
+        <div v-else-if="loadError" class="state-msg state-msg--error">{{ loadError }}</div>
         <div v-else-if="snapshots.length === 0" class="state-msg">
           저장된 스냅샷이 없습니다.
         </div>
@@ -137,7 +143,8 @@ onMounted(loadSnapshots)
               <button class="btn-confirm-restore" :disabled="restoring" @click="handleRestore">
                 {{ restoring ? '복원 중...' : '확인' }}
               </button>
-              <button class="btn-cancel" @click="confirmRestoreId = null">취소</button>
+              <button class="btn-cancel" @click="confirmRestoreId = null; restoreError = ''">취소</button>
+              <p v-if="restoreError" class="form-error">{{ restoreError }}</p>
             </template>
           </div>
         </div>
@@ -280,6 +287,16 @@ onMounted(loadSnapshots)
   color: #6080a0;
   text-align: center;
   padding: 32px 0;
+}
+
+.state-msg--error {
+  color: #f87171;
+}
+
+.form-error {
+  font-size: 12px;
+  color: #f87171;
+  margin: 4px 0 0;
 }
 
 .snapshot-item {

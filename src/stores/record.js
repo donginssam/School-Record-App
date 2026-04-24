@@ -25,5 +25,13 @@ export const useRecordStore = defineStore('record', () => {
         await invoke('upsert_record', {activityId, studentId, content})
     }
 
-    return {gridData, loading, error, fetchAreaGrid, upsertRecord}
+    async function fetchRecordHistory({activityId, studentId, limit, offset}) {
+        return await invoke('get_record_history', {activityId, studentId, limit, offset})
+    }
+
+    async function saveHistorySnapshot({activityId, studentId, note}) {
+        await invoke('save_history_snapshot', {activityId, studentId, note})
+    }
+
+    return {gridData, loading, error, fetchAreaGrid, upsertRecord, fetchRecordHistory, saveHistorySnapshot}
 })

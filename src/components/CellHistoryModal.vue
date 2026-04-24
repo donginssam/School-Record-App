@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { useRecordStore } from '../stores/record.js'
 import { X } from 'lucide-vue-next'
 import DiffView from './DiffView.vue'
 
@@ -15,6 +15,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+
+const recordStore = useRecordStore()
 
 const LIMIT = 5
 
@@ -38,7 +40,7 @@ async function loadHistory(reset = false) {
   loading.value = true
   try {
     // LIMIT+1개를 조회해서 다음 페이지 존재 여부 확인
-    const batch = await invoke('get_record_history', {
+    const batch = await recordStore.fetchRecordHistory({
       activityId: props.activityId,
       studentId: props.studentId,
       limit: LIMIT + 1,
@@ -83,7 +85,7 @@ async function saveManualSnapshot() {
   saving.value = true
   saveError.value = ''
   try {
-    await invoke('save_history_snapshot', {
+    await recordStore.saveHistorySnapshot({
       activityId: props.activityId,
       studentId: props.studentId,
       note,

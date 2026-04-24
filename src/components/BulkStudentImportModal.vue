@@ -2,7 +2,7 @@
 import {computed, ref} from 'vue'
 import {AlertCircle, CheckCircle2, Download, FileSpreadsheet, Upload, X} from 'lucide-vue-next'
 import {Workbook} from 'exceljs'
-import {invoke} from '@tauri-apps/api/core'
+import {useStudentStore} from '../stores/student.js'
 import {save} from '@tauri-apps/plugin-dialog'
 
 const SAMPLE_CSV = `학년,반,번호,이름
@@ -19,6 +19,8 @@ const COL_ALIASES = {
 }
 
 const emit = defineEmits(['close', 'imported'])
+
+const studentStore = useStudentStore()
 
 const dragging = ref(false)
 const fileName = ref('')
@@ -86,7 +88,7 @@ async function downloadSample() {
     filters: [{name: 'CSV', extensions: ['csv']}],
   })
   if (!path) return
-  await invoke('write_text_file', {path, content: '\uFEFF' + SAMPLE_CSV})
+  await studentStore.writeSampleFile(path, '\uFEFF' + SAMPLE_CSV)
 }
 
 function onDragOver(e) {
@@ -235,7 +237,7 @@ async function doImport() {
       number: r.number,
       name: r.name,
     }))
-    const {inserted, updated} = await invoke('bulk_upsert_students', {students})
+    const {inserted, updated} = await studentStore.bulkUpsertStudents(students)
     importResult.value = {inserted, updated, total: rows.length}
     emit('imported')
   } catch (e) {

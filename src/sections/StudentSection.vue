@@ -183,6 +183,7 @@ async function handleDeleted() {
           v-if="modalVisible"
           :mode="modalMode"
           :student="selectedStudent"
+          :submitting="saving"
           @close="closeModal"
           @saved="handleSaved"
           @deleted="handleDeleted"
