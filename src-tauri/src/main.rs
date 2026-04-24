@@ -1963,6 +1963,7 @@ fn get_all_records_for_inspect(
                  JOIN Student s ON ar.student_id = s.id
                  JOIN AreaActivity aa ON act.id = aa.activity_id
                  JOIN Area a ON aa.area_id = a.id
+                 JOIN AreaStudent ast ON ar.student_id = ast.student_id AND ast.area_id = aa.area_id
                  WHERE ar.content != '' AND aa.area_id IN ({placeholders})
                  GROUP BY ar.id
                  ORDER BY a.id, act.id, s.grade, s.class_num, s.number"
