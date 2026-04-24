@@ -41,12 +41,12 @@ export const useReplaceRuleStore = defineStore('replaceRule', () => {
     await fetchRules()
   }
 
-  async function previewReplace(scopeType, areaId) {
-    return await invoke('preview_replace', { scopeType, areaId: areaId ?? null })
+  async function previewReplace(scopeType, areaIds = []) {
+    return await invoke('preview_replace', { scopeType, areaIds })
   }
 
-  async function applyReplace(scopeType, areaId) {
-    return await invoke('apply_replace', { scopeType, areaId: areaId ?? null })
+  async function applyReplace(scopeType, areaIds = []) {
+    return await invoke('apply_replace', { scopeType, areaIds })
   }
 
   return { rules, loading, error, fetchRules, createRule, updateRule, deleteRule, previewReplace, applyReplace }

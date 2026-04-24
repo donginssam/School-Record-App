@@ -1377,8 +1377,16 @@ fn fetch_rules_from_db(conn: &Connection) -> Result<Vec<ReplaceRule>, String> {
 fn get_records_for_scope(
     conn: &Connection,
     scope_type: &str,
-    area_id: Option<i64>,
+    area_ids: &[i64],
 ) -> Result<Vec<RecordCell>, String> {
+    let map_row = |row: &rusqlite::Row| {
+        Ok(RecordCell {
+            activity_id: row.get(0)?,
+            student_id:  row.get(1)?,
+            content:     row.get(2)?,
+        })
+    };
+
     match scope_type {
         "all" => {
             let mut stmt = conn
@@ -1387,42 +1395,30 @@ fn get_records_for_scope(
                      FROM ActivityRecord WHERE content != ''",
                 )
                 .map_err(|e| e.to_string())?;
-            let records = stmt
-                .query_map([], |row| {
-                    Ok(RecordCell {
-                        activity_id: row.get(0)?,
-                        student_id: row.get(1)?,
-                        content: row.get(2)?,
-                    })
-                })
+            let result = stmt.query_map([], map_row)
                 .map_err(|e| e.to_string())?
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| e.to_string())?;
-            Ok(records)
+                .map_err(|e| e.to_string());
+            result
         }
-        "area" => {
-            let aid =
-                area_id.ok_or_else(|| "area 범위에는 area_id가 필요합니다.".to_string())?;
-            let mut stmt = conn
-                .prepare(
-                    "SELECT ar.activity_id, ar.student_id, ar.content
-                     FROM ActivityRecord ar
-                     JOIN AreaActivity aa ON aa.activity_id = ar.activity_id
-                     WHERE aa.area_id = ?1 AND ar.content != ''",
-                )
-                .map_err(|e| e.to_string())?;
-            let records = stmt
-                .query_map(rusqlite::params![aid], |row| {
-                    Ok(RecordCell {
-                        activity_id: row.get(0)?,
-                        student_id: row.get(1)?,
-                        content: row.get(2)?,
-                    })
-                })
+        "areas" => {
+            if area_ids.is_empty() {
+                return Ok(vec![]);
+            }
+            let placeholders = area_ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            let sql = format!(
+                "SELECT ar.activity_id, ar.student_id, ar.content
+                 FROM ActivityRecord ar
+                 JOIN AreaActivity aa ON aa.activity_id = ar.activity_id
+                 WHERE aa.area_id IN ({placeholders}) AND ar.content != ''
+                 GROUP BY ar.activity_id, ar.student_id"
+            );
+            let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+            let result = stmt.query_map(rusqlite::params_from_iter(area_ids.iter()), map_row)
                 .map_err(|e| e.to_string())?
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| e.to_string())?;
-            Ok(records)
+                .map_err(|e| e.to_string());
+            result
         }
         _ => Err(format!("알 수 없는 scope_type: {scope_type}")),
     }
@@ -1616,7 +1612,7 @@ fn seed_default_replace_rules(
 #[tauri::command]
 fn preview_replace(
     scope_type: String,
-    area_id: Option<i64>,
+    area_ids: Vec<i64>,
     state: State<DbState>,
     cache: State<ReplaceCacheState>,
 ) -> Result<Vec<ReplacePreviewItem>, String> {
@@ -1628,7 +1624,7 @@ fn preview_replace(
             .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
 
         let rules = fetch_rules_from_db(conn)?;
-        let records = get_records_for_scope(conn, &scope_type, area_id)?;
+        let records = get_records_for_scope(conn, &scope_type, &area_ids)?;
 
         let mut act_names: HashMap<i64, String> = HashMap::new();
         let mut stu_names: HashMap<i64, String> = HashMap::new();
@@ -1687,7 +1683,7 @@ fn preview_replace(
 #[tauri::command]
 fn apply_replace(
     scope_type: String,
-    area_id: Option<i64>,
+    area_ids: Vec<i64>,
     state: State<DbState>,
     cache: State<ReplaceCacheState>,
 ) -> Result<ReplaceApplyResult, String> {
@@ -1698,7 +1694,7 @@ fn apply_replace(
             .as_ref()
             .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
         let rules = fetch_rules_from_db(conn)?;
-        let records = get_records_for_scope(conn, &scope_type, area_id)?;
+        let records = get_records_for_scope(conn, &scope_type, &area_ids)?;
         (rules, records)
     };
 
