@@ -142,10 +142,6 @@ async function startSearch() {
         store.groups,
         store.records,
     )
-    if (inspectResults.value.length === 0) {
-      alert('선택한 유의어 그룹에 해당하는 내용이 없습니다.')
-      return
-    }
     step.value = 3
   } finally {
     searching.value = false
@@ -412,18 +408,27 @@ onMounted(() => {
         <div class="step-header result-header">
           <div>
             <h3 class="step-title">Step 3. 점검 결과</h3>
-            <p class="step-desc">
+            <p v-if="inspectResults.length > 0" class="step-desc">
               총 <strong>{{ inspectResults.length }}건</strong>의 기록에서 유의어가 탐지되었습니다.
             </p>
+            <p v-else class="step-desc">
+              선택한 유의어 그룹에 해당하는 기록이 없습니다.
+            </p>
           </div>
-          <button class="btn-export" :disabled="exporting" @click="exportToExcel">
+          <button v-if="inspectResults.length > 0" class="btn-export" :disabled="exporting" @click="exportToExcel">
             <Loader2 v-if="exporting" :size="15" class="spin"/>
             <FileDown v-else :size="15"/>
             {{ exporting ? '저장 중...' : 'Excel 내보내기' }}
           </button>
         </div>
 
-        <div class="result-table-wrap">
+        <div v-if="inspectResults.length === 0" class="empty-state">
+          <ScanSearch :size="40" class="empty-icon"/>
+          <p class="empty-title">탐지된 유의어가 없습니다</p>
+          <p class="empty-desc">유의어가 발견되지 않았습니다.</p>
+        </div>
+
+        <div v-else class="result-table-wrap">
           <table class="result-table">
             <thead>
             <tr>
@@ -1144,6 +1149,33 @@ onMounted(() => {
 .btn-next:hover:not(:disabled) {
   background: rgba(59, 91, 219, 0.15);
   color: #c7d2fe;
+}
+
+/* ── Step 3: 빈 상태 ─────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 0;
+  gap: 12px;
+}
+
+.empty-icon {
+  color: #2a3355;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #7c8db5;
+  margin: 0;
+}
+
+.empty-desc {
+  font-size: 16px;
+  color: #4a5568;
+  margin: 0;
 }
 
 /* ── 유틸 ────────────────────────────────────────────────── */
