@@ -3,7 +3,19 @@ import {computed, onMounted, ref} from 'vue'
 import {useReplaceRuleStore} from '../stores/replaceRule'
 import {useAreaStore} from '../stores/area'
 import DiffView from '../components/DiffView.vue'
-import {Check, ChevronDown, ChevronUp, Eye, Pencil, Play, Plus, Trash2, TriangleAlert, X,} from 'lucide-vue-next'
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Pencil,
+  Play,
+  Plus,
+  SearchX,
+  Trash2,
+  TriangleAlert,
+  X,
+} from 'lucide-vue-next'
 
 const ruleStore = useReplaceRuleStore()
 const areaStore = useAreaStore()
@@ -15,6 +27,8 @@ const selectedAreaId = ref(null)
 // ── 규칙 인라인 편집 ───────────────────────────────────────
 const editingId = ref(null)
 const editForm = ref({oldText: '', newText: '', priority: 0})
+const editError = ref('')
+const operationError = ref('')
 
 function startEdit(rule) {
   editingId.value = rule.id
@@ -42,31 +56,34 @@ async function commitEdit(rule) {
 }
 
 async function toggleEnabled(rule) {
+  operationError.value = ''
   try {
     await ruleStore.updateRule(
         rule.id, rule.old_text, rule.new_text, !rule.enabled, rule.priority,
     )
   } catch (e) {
-    ruleStore.error = e?.toString() ?? '수정 실패'
+    operationError.value = e?.toString() ?? '수정 실패'
   }
 }
 
 async function adjustPriority(rule, delta) {
   const newPriority = rule.priority + delta
+  operationError.value = ''
   try {
     await ruleStore.updateRule(
         rule.id, rule.old_text, rule.new_text, rule.enabled, newPriority,
     )
   } catch (e) {
-    ruleStore.error = e?.toString() ?? '수정 실패'
+    operationError.value = e?.toString() ?? '수정 실패'
   }
 }
 
 async function deleteRule(id) {
+  operationError.value = ''
   try {
     await ruleStore.deleteRule(id)
   } catch (e) {
-    ruleStore.error = e?.toString() ?? '삭제 실패'
+    operationError.value = e?.toString() ?? '삭제 실패'
   }
 }
 
@@ -74,7 +91,6 @@ async function deleteRule(id) {
 const showAddForm = ref(false)
 const newRule = ref({oldText: '', newText: '', priority: 0})
 const addError = ref('')
-const editError = ref('')
 
 async function submitAdd() {
   addError.value = ''
@@ -91,6 +107,7 @@ async function submitAdd() {
 const previewItems = ref([])
 const previewError = ref('')
 const isPreviewing = ref(false)
+const hasRanPreview = ref(false)
 const PREVIEW_LIMIT = 50
 const showAllPreview = ref(false)
 
@@ -100,8 +117,10 @@ const visiblePreviewItems = computed(() =>
 
 async function runPreview() {
   previewError.value = ''
+  applyError.value = ''
   previewItems.value = []
   applyResult.value = null
+  hasRanPreview.value = false
   isPreviewing.value = true
   try {
     previewItems.value = await ruleStore.previewReplace(
@@ -113,6 +132,7 @@ async function runPreview() {
     previewError.value = e?.toString() ?? '미리보기 실패'
   } finally {
     isPreviewing.value = false
+    hasRanPreview.value = true
   }
 }
 
@@ -123,6 +143,7 @@ const isApplying = ref(false)
 
 async function runApply() {
   applyError.value = ''
+  previewError.value = ''
   isApplying.value = true
   try {
     applyResult.value = await ruleStore.applyReplace(
@@ -144,7 +165,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="section-container">
+  <div class="section">
     <div class="section-header">
       <h2 class="section-title">텍스트 치환(Replace)</h2>
       <p class="section-desc">학교생활기록부 문장의 특수문자, 텍스트 등을 일괄 교체합니다.</p>
@@ -194,6 +215,7 @@ onMounted(async () => {
         </div>
 
         <p v-if="ruleStore.error" class="error-msg mt-2">{{ ruleStore.error }}</p>
+        <p v-if="operationError" class="error-msg mt-2">{{ operationError }}</p>
 
         <!-- 규칙 테이블 -->
         <div v-if="ruleStore.rules.length === 0 && !ruleStore.loading" class="empty-state">
@@ -236,11 +258,11 @@ onMounted(async () => {
             <template v-else>
               <div class="col-priority priority-ctrl">
                 <button class="btn-icon-tiny" @click="adjustPriority(rule, -1)" title="우선순위 높이기">
-                  <ChevronUp :size="13"/>
+                  <ChevronLeft :size="14"/>
                 </button>
                 <span class="priority-val">{{ rule.priority }}</span>
                 <button class="btn-icon-tiny" @click="adjustPriority(rule, 1)" title="우선순위 낮추기">
-                  <ChevronDown :size="13"/>
+                  <ChevronRight :size="14"/>
                 </button>
               </div>
 
@@ -251,7 +273,7 @@ onMounted(async () => {
                     class="conflict-badge"
                     :title="`충돌 규칙 ID: ${rule.conflicts.join(', ')}`"
                 >
-                  <TriangleAlert :size="13"/>
+                  <TriangleAlert :size="14"/>
                 </span>
               </div>
 
@@ -371,7 +393,14 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-else-if="!isPreviewing && previewItems.length === 0 && applyResult === null && !previewError"
+      <div v-else-if="hasRanPreview && previewItems.length === 0 && applyResult === null && !previewError"
+           class="empty-preview empty-preview--no-result">
+        <SearchX :size="36" class="empty-preview__icon"/>
+        <p class="empty-preview__title">변경될 항목이 없습니다</p>
+        <p class="empty-preview__desc">활성화된 규칙과 일치하는 텍스트를 찾지 못했습니다.</p>
+      </div>
+
+      <div v-else-if="!hasRanPreview && !isPreviewing && applyResult === null && !previewError"
            class="empty-preview">
         미리보기를 실행하면 변경될 항목이 표시됩니다.
       </div>
@@ -390,7 +419,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.section-container {
+.section {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -420,7 +449,7 @@ onMounted(async () => {
 .section-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 28px;
+  padding: 32px 40px 48px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -448,10 +477,6 @@ onMounted(async () => {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-
-.mb-3 { margin-bottom: 12px; }
-.mt-2 { margin-top: 8px; }
-.mt-3 { margin-top: 12px; }
 
 /* 추가 폼 */
 .add-form {
@@ -485,7 +510,7 @@ onMounted(async () => {
 .rule-header-row {
   padding: 4px 10px;
   font-size: 14px;
-  color: #475569;
+  color: #6b8ab5;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -524,16 +549,18 @@ onMounted(async () => {
 /* 우선순위 컨트롤 */
 .priority-ctrl {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 1px;
+  justify-content: center;
+  gap: 4px;
 }
 
 .priority-val {
   font-size: 14px;
   color: #64748b;
-  min-width: 22px;
+  min-width: 26px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 텍스트 열 */
@@ -620,6 +647,7 @@ onMounted(async () => {
   align-items: center;
   gap: 20px;
   flex-wrap: wrap;
+  min-height: 36px;
 }
 
 .radio-label {
@@ -645,7 +673,7 @@ onMounted(async () => {
   padding: 6px 12px;
   border-radius: 6px;
   border: none;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   transition: background-color 0.15s;
 }
@@ -830,7 +858,7 @@ onMounted(async () => {
 }
 
 .diff-label {
-  font-size: 13px;
+  font-size: 14px;
   color: #64748b;
 }
 
@@ -846,7 +874,7 @@ onMounted(async () => {
 
 .error-msg {
   color: #f87171;
-  font-size: 13px;
+  font-size: 14px;
   margin: 4px 0 0;
   width: 100%;
 }
@@ -886,10 +914,37 @@ onMounted(async () => {
 .empty-preview {
   color: #334155;
   font-size: 14px;
-  padding: 18px;
+  padding: 36px 18px;
   text-align: center;
   border: 1px dashed #1a2035;
   border-radius: 8px;
+}
+
+.empty-preview--no-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 36px 18px;
+  border-color: #1e3a2f;
+  background-color: rgba(74, 222, 128, 0.03);
+}
+
+.empty-preview__icon {
+  color: #2d6a4a;
+}
+
+.empty-preview__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #4ade80;
+  margin: 0;
+}
+
+.empty-preview__desc {
+  font-size: 14px;
+  color: #475569;
+  margin: 0;
 }
 
 .snapshot-notice {
@@ -897,8 +952,9 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   color: #f59e0b;
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 12px;
+  margin-bottom: 12px;
   padding: 9px 12px;
   background-color: rgba(245, 158, 11, 0.06);
   border-radius: 6px;
@@ -907,7 +963,7 @@ onMounted(async () => {
 
 .hint-text {
   color: #475569;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: normal;
   text-transform: none;
   letter-spacing: 0;
