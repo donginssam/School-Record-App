@@ -714,7 +714,11 @@ function resetWizard() {
 
     <!-- 툴바 -->
     <div class="toolbar">
-      <h2 class="section-title">데이터 가져오기(Import)</h2>
+      <div class="section-header">
+        <h2 class="section-title">데이터 가져오기(Import)</h2>
+        <p class="section-desc">다양한 형식의 학교생활기록부 기재 문장을 본 프로그램으로 가져옵니다.</p>
+      </div>
+
       <div class="step-indicator">
         <span
             v-for="n in 6"
@@ -1364,10 +1368,23 @@ function resetWizard() {
   flex-shrink: 0;
 }
 
+.section-header {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+
 .section-title {
   font-size: 22px;
   font-weight: 700;
   color: #e2e8f0;
+  margin: 0 0 6px;
+}
+
+.section-desc {
+  font-size: 16px;
+  color: #7ba3d4;
   margin: 0;
 }
 

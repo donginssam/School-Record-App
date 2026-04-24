@@ -296,7 +296,10 @@ async function doExport() {
 
     <!-- 헤더 -->
     <div class="toolbar">
-      <h2 class="section-title">체크리스트(Checklist) 내보내기</h2>
+      <div class="section-header">
+        <h2 class="section-title">체크리스트(Checklist) 내보내기</h2>
+        <p class="section-desc">학교생활기록부 점검을 위해 활동(Activity)별 키워드 혹은 주제를 추출하여 내보냅니다.</p>
+      </div>
       <div class="step-indicator">
         <div v-for="n in 3" :key="n" class="step-dot"
              :class="{ 'step-dot--active': step === n, 'step-dot--done': step > n }">
@@ -480,10 +483,23 @@ async function doExport() {
   flex-shrink: 0;
 }
 
+.section-header {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+
 .section-title {
   font-size: 22px;
   font-weight: 700;
   color: #e2e8f0;
+  margin: 0 0 6px;
+}
+
+.section-desc {
+  font-size: 16px;
+  color: #7ba3d4;
   margin: 0;
 }
 

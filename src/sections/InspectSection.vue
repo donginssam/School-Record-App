@@ -256,8 +256,8 @@ onMounted(() => {
       <!-- ─── Step 1: 유의어 그룹 관리 ─────────────────────── -->
       <div v-if="step === 1" class="step-content">
         <div class="step-header">
-          <h3 class="step-title">Step 1. 유의어 그룹 관리</h3>
-          <p class="step-desc">점검에 사용할 유의어 그룹과 단어를 관리합니다.</p>
+          <h3 class="step-title">Step 1. 유의어 관리</h3>
+          <p class="step-desc">학교생활기록부 점검에 사용할 유의어 그룹과 검색 대상 단어를 관리합니다.</p>
         </div>
 
         <!-- 로딩 -->
@@ -346,7 +346,7 @@ onMounted(() => {
                     @keydown.esc="showAddGroup = false; addGroupError = ''"
                     autofocus
                 />
-                <button class="btn-primary" @click="submitNewGroup">추가</button>
+                <button class="btn-sm btn-primary" @click="submitNewGroup"><Plus :size="13"/>생성</button>
                 <button class="btn-ghost" @click="showAddGroup = false; addGroupError = ''">취소</button>
               </div>
               <p v-if="addGroupError" class="field-error">{{ addGroupError }}</p>
@@ -567,21 +567,21 @@ onMounted(() => {
   font-size: 13px;
   font-weight: 600;
   border: 1px solid #1a2035;
-  color: #4a5568;
+  color: var(--clr-text-hint);
   background: transparent;
   transition: all 0.2s;
 }
 
 .step-dot--active {
-  border-color: #3b5bdb;
-  color: #fff;
-  background: #3b5bdb;
+  border-color: rgba(59, 91, 219, 0.8);
+  color: #7ba8f0;
+  background: rgba(59, 91, 219, 0.12);
 }
 
 .step-dot--done {
-  border-color: #2d6a4f;
-  color: #52b788;
-  background: rgba(82, 183, 136, 0.1);
+  border-color: rgba(52, 211, 153, 0.5);
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.08);
 }
 
 /* ── 상태 박스 ───────────────────────────────────────────── */

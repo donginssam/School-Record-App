@@ -155,7 +155,9 @@ async function doExport() {
 
       // A~D열: 학년/반/번호/이름 (좁게), E열~: 내용 열 (넓게 + wrapText)
       const fixedWidths = [8, 8, 8, 12]
-      fixedWidths.forEach((w, i) => { worksheet.getColumn(i + 1).width = w })
+      fixedWidths.forEach((w, i) => {
+        worksheet.getColumn(i + 1).width = w
+      })
       for (let i = fixedWidths.length; i < headers.length; i++) {
         worksheet.getColumn(i + 1).width = exportType.value === 'A' && i === fixedWidths.length ? 22 : 60
       }
@@ -194,7 +196,10 @@ async function doExport() {
 
     <!-- 헤더 -->
     <div class="toolbar">
-      <h2 class="section-title">데이터 내보내기(Export)</h2>
+      <div class="section-header">
+        <h2 class="section-title">데이터 내보내기(Export)</h2>
+        <p class="section-desc">완성된 학교생활기록부를 다양한 형식으로 내보냅니다.</p>
+      </div>
       <div class="step-indicator">
         <div v-for="n in 3" :key="n" class="step-dot"
              :class="{ 'step-dot--active': step === n, 'step-dot--done': step > n }">
@@ -478,10 +483,23 @@ async function doExport() {
   flex-shrink: 0;
 }
 
+.section-header {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+
 .section-title {
   font-size: 22px;
   font-weight: 700;
   color: #e2e8f0;
+  margin: 0 0 6px;
+}
+
+.section-desc {
+  font-size: 16px;
+  color: #7ba3d4;
   margin: 0;
 }
 
