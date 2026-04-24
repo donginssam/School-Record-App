@@ -1,15 +1,15 @@
 <script setup>
 import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
-import {invoke} from '@tauri-apps/api/core'
 import {ArrowLeftRight, CircleAlert, Minimize2, Pin, PinOff} from 'lucide-vue-next'
 import {useAreaStore} from '../stores/area'
+import {useRecordStore} from '../stores/record'
 import CellHistoryModal from '../components/CellHistoryModal.vue'
 
 const areaStore = useAreaStore()
+const recordStore = useRecordStore()
 
 const selectedAreaId = ref(null)
-const gridData = ref(null)
-const loading = ref(false)
+const loadError = ref('')
 const freezeColumns = ref(true)
 const smartScroll = ref(true)
 const compactCell = ref(true)
@@ -43,16 +43,16 @@ onBeforeUnmount(clearAllTimers)
 
 watch(selectedAreaId, async (id) => {
   clearAllTimers()
+  loadError.value = ''
   if (!id) {
-    gridData.value = null
+    recordStore.gridData = null
     return
   }
-  loading.value = true
   try {
-    gridData.value = await invoke('get_area_grid', {areaId: id})
+    await recordStore.fetchAreaGrid(id)
     // 기존 기록을 cellContent에 세팅
     const map = new Map()
-    for (const r of gridData.value.records) {
+    for (const r of recordStore.gridData.records) {
       map.set(cellKey(r.activity_id, r.student_id), r.content)
     }
     cellContent.value = map
@@ -63,10 +63,7 @@ watch(selectedAreaId, async (id) => {
       document.querySelectorAll('.cell-input').forEach(el => autoResize(el))
     }
   } catch (e) {
-    console.error(e)
-    gridData.value = null
-  } finally {
-    loading.value = false
+    loadError.value = String(e)
   }
 })
 
@@ -111,6 +108,13 @@ function onCellInput(activityId, studentId, event) {
   cellContent.value = map
   if (!compactCell.value) autoResize(event.target)
 
+  // 이전 에러 초기화
+  if (savingState.value.get(key) === 'error') {
+    const cleared = new Map(savingState.value)
+    cleared.delete(key)
+    savingState.value = cleared
+  }
+
   // debounce 저장
   if (debounceTimers.has(key)) {
     clearTimeout(debounceTimers.get(key))
@@ -146,7 +150,7 @@ async function saveCell(activityId, studentId, content) {
   stateMap.set(key, 'saving')
   savingState.value = stateMap
   try {
-    await invoke('upsert_record', {activityId, studentId, content})
+    await recordStore.upsertRecord(activityId, studentId, content)
     const next = new Map(savingState.value)
     next.set(key, 'saved')
     savingState.value = next
@@ -156,15 +160,9 @@ async function saveCell(activityId, studentId, content) {
       savingState.value = clear
     }, 500)
   } catch (e) {
-    console.error(e)
     const next = new Map(savingState.value)
     next.set(key, 'error')
     savingState.value = next
-    setTimeout(() => {
-      const clear = new Map(savingState.value)
-      clear.delete(key)
-      savingState.value = clear
-    }, 3000)
   }
 }
 
@@ -195,9 +193,9 @@ function isOverLimit(activityId, studentId) {
 }
 
 function studentTotalBytes(studentId) {
-  if (!gridData.value) return 0
+  if (!recordStore.gridData) return 0
   let total = 0
-  for (const act of gridData.value.activities) {
+  for (const act of recordStore.gridData.activities) {
     total += byteLength(getCellContent(act.id, studentId))
   }
   return total
@@ -316,18 +314,23 @@ function isNewGroup(students, index) {
       </div>
 
       <!-- 로딩 -->
-      <div v-else-if="loading" class="empty-state">
+      <div v-else-if="recordStore.loading" class="empty-state">
         <p class="empty-text">불러오는 중...</p>
       </div>
 
+      <!-- 에러 -->
+      <div v-else-if="loadError" class="empty-state">
+        <p class="empty-text state-error">{{ loadError }}</p>
+      </div>
+
       <!-- 그리드 없음 (학생 또는 활동 없음) -->
-      <div v-else-if="!gridData || gridData.students.length === 0 || gridData.activities.length === 0"
+      <div v-else-if="!recordStore.gridData || recordStore.gridData.students.length === 0 || recordStore.gridData.activities.length === 0"
            class="empty-state">
         <p class="empty-text">
-          <template v-if="gridData && gridData.students.length === 0">이 영역에 배정된 학생이 없습니다. 영역(Area) 관리에서 <strong><u>학생
+          <template v-if="recordStore.gridData && recordStore.gridData.students.length === 0">이 영역에 배정된 학생이 없습니다. 영역(Area) 관리에서 <strong><u>학생
             배정</u></strong> 버튼을 눌러 학생을 배정하세요.
           </template>
-          <template v-else-if="gridData && gridData.activities.length === 0">이 영역에 등록된 활동이 없습니다. 영역(Area) 관리에서
+          <template v-else-if="recordStore.gridData && recordStore.gridData.activities.length === 0">이 영역에 등록된 활동이 없습니다. 영역(Area) 관리에서
             <strong><u>포함할 활동</u></strong>을 추가하세요.
           </template>
           <template v-else>데이터를 불러올 수 없습니다.</template>
@@ -370,7 +373,7 @@ function isNewGroup(students, index) {
             >합계
             </th>
             <th
-                v-for="act in gridData.activities"
+                v-for="act in recordStore.gridData.activities"
                 :key="act.id"
                 class="th-activity"
                 :class="{ 'th-activity--collapsed': collapsedActivities.has(act.id) }"
@@ -382,9 +385,9 @@ function isNewGroup(students, index) {
           </thead>
           <tbody>
           <tr
-              v-for="(student, idx) in gridData.students"
+              v-for="(student, idx) in recordStore.gridData.students"
               :key="student.id"
-              :class="isNewGroup(gridData.students, idx) ? 'row-group-start' : ''"
+              :class="isNewGroup(recordStore.gridData.students, idx) ? 'row-group-start' : ''"
           >
             <td
                 class="td-fixed td-grade"
@@ -427,7 +430,7 @@ function isNewGroup(students, index) {
             </span>
             </td>
             <td
-                v-for="act in gridData.activities"
+                v-for="act in recordStore.gridData.activities"
                 :key="act.id"
                 class="td-cell"
                 :style="collapsedActivities.has(act.id) ? { width: '80px', minWidth: '80px', maxWidth: '80px' } : {}"
@@ -579,6 +582,10 @@ function isNewGroup(students, index) {
   margin: 0;
   text-align: center;
   line-height: 1.7;
+}
+
+.state-error {
+  color: #f87171;
 }
 
 /* 그리드 — 기본(틀고정 OFF): 가로 스크롤만, 세로는 자연스럽게 늘어나서 workspace-main이 스크롤 (toolbar 함께 스크롤됨) */

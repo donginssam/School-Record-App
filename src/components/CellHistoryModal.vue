@@ -22,15 +22,18 @@ const entries = ref([])
 const offset = ref(0)
 const hasMore = ref(false)
 const loading = ref(false)
+const historyError = ref('')
 
 const showNoteForm = ref(false)
 const noteInput = ref('')
 const saving = ref(false)
+const saveError = ref('')
 
 async function loadHistory(reset = false) {
   if (reset) {
     entries.value = []
     offset.value = 0
+    historyError.value = ''
   }
   loading.value = true
   try {
@@ -46,7 +49,7 @@ async function loadHistory(reset = false) {
     entries.value = [...entries.value, ...items]
     offset.value += items.length
   } catch (e) {
-    console.error(e)
+    historyError.value = String(e)
   } finally {
     loading.value = false
   }
@@ -74,9 +77,11 @@ function formatDate(str) {
 }
 
 async function saveManualSnapshot() {
+  if (saving.value) return
   const note = noteInput.value.trim()
   if (!note) return
   saving.value = true
+  saveError.value = ''
   try {
     await invoke('save_history_snapshot', {
       activityId: props.activityId,
@@ -87,7 +92,7 @@ async function saveManualSnapshot() {
     showNoteForm.value = false
     await loadHistory(true)
   } catch (e) {
-    console.error(e)
+    saveError.value = String(e)
   } finally {
     saving.value = false
   }
@@ -129,6 +134,7 @@ async function saveManualSnapshot() {
             </button>
             <button class="btn-cancel" @click="showNoteForm = false; noteInput = ''">취소</button>
           </div>
+          <p v-if="saveError" class="form-error">{{ saveError }}</p>
         </template>
       </div>
 
@@ -148,7 +154,9 @@ async function saveManualSnapshot() {
 
       <!-- 히스토리 목록 -->
       <div class="history-list">
-        <div v-if="entries.length === 0 && !loading" class="empty-msg">
+        <p v-if="historyError" class="form-error">{{ historyError }}</p>
+
+        <div v-if="entries.length === 0 && !loading && !historyError" class="empty-msg">
           저장된 히스토리가 없습니다.
         </div>
 
@@ -310,6 +318,16 @@ async function saveManualSnapshot() {
   color: #6080a0;
   text-align: center;
   padding: 24px 0;
+}
+
+.form-error {
+  font-size: 13px;
+  color: #f87171;
+  background-color: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 4px 0 0;
 }
 
 .history-item {
