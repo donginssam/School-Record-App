@@ -24,11 +24,16 @@ const previewRows = ref([])  // { studentId, grade, classNum, number, name, acti
 const exporting = ref(false)
 const exportResult = ref(null)
 const exportError = ref('')
+const isNavigating = ref(false)
 
 // ── 초기 데이터 로드 ──────────────────────────────────────────
 
 onMounted(async () => {
-  areas.value = await invoke('get_areas')
+  try {
+    areas.value = await invoke('get_areas')
+  } catch (e) {
+    exportError.value = `영역 목록을 불러오지 못했습니다: ${e}`
+  }
 })
 
 // ── Computed ──────────────────────────────────────────────────
@@ -63,28 +68,36 @@ const previewGroups = computed(() => {
 // ── 네비게이션 ────────────────────────────────────────────────
 
 async function goNext() {
-  if (step.value === 1) {
-    gridData.value = await invoke('get_area_grid', {areaId: selectedAreaId.value})
-    const {activities, students, records} = gridData.value
-    previewRows.value = students.flatMap(student =>
-        activities.map(activity => {
-          const rec = records.find(r => r.student_id === student.id && r.activity_id === activity.id)
-          const content = rec?.content?.trim() ?? ''
-          return {
-            studentId: student.id,
-            grade: student.grade,
-            classNum: student.class_num,
-            number: student.number,
-            name: student.name,
-            activityId: activity.id,
-            activityName: activity.name,
-            hasContent: !!content,
-            topic: content ? extractTopic(content) : '',
-          }
-        })
-    )
+  if (isNavigating.value) return
+  isNavigating.value = true
+  try {
+    if (step.value === 1) {
+      gridData.value = await invoke('get_area_grid', {areaId: selectedAreaId.value})
+      const {activities, students, records} = gridData.value
+      previewRows.value = students.flatMap(student =>
+          activities.map(activity => {
+            const rec = records.find(r => r.student_id === student.id && r.activity_id === activity.id)
+            const content = rec?.content?.trim() ?? ''
+            return {
+              studentId: student.id,
+              grade: student.grade,
+              classNum: student.class_num,
+              number: student.number,
+              name: student.name,
+              activityId: activity.id,
+              activityName: activity.name,
+              hasContent: !!content,
+              topic: content ? extractTopic(content) : '',
+            }
+          })
+      )
+    }
+    step.value++
+  } catch (e) {
+    exportError.value = `데이터를 불러오지 못했습니다: ${e}`
+  } finally {
+    isNavigating.value = false
   }
-  step.value++
 }
 
 function goPrev() {
@@ -96,8 +109,10 @@ function resetWizard() {
   selectedAreaId.value = null
   gridData.value = null
   previewRows.value = []
+  previewEnabled.value = true
   exportResult.value = null
   exportError.value = ''
+  isNavigating.value = false
 }
 
 // ── 활동주제 추출 ─────────────────────────────────────────────
@@ -317,7 +332,8 @@ async function doExport() {
         <h3 class="step-title">Step 1. 영역(Area) 선택</h3>
         <p class="step-desc">체크리스트를 만들 영역을 선택하세요.</p>
 
-        <p v-if="areas.length === 0" class="empty-hint">등록된 영역이 없습니다.</p>
+        <p v-if="exportError && areas.length === 0" class="error-text">{{ exportError }}</p>
+        <p v-else-if="areas.length === 0" class="empty-hint">등록된 영역이 없습니다.</p>
 
         <div v-else class="area-cards">
           <div
@@ -457,8 +473,8 @@ async function doExport() {
         <ArrowLeft :size="15"/>
         이전
       </button>
-      <button v-if="step < 3" class="btn-next" :disabled="!canGoNext" @click="goNext">
-        다음
+      <button v-if="step < 3" class="btn-next" :disabled="!canGoNext || isNavigating" @click="goNext">
+        {{ isNavigating ? '불러오는 중…' : '다음' }}
         <ArrowRight :size="15"/>
       </button>
     </div>
