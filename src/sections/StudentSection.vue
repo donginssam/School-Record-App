@@ -1,6 +1,5 @@
 <script setup>
 import {computed, onMounted, ref} from 'vue'
-import {invoke} from '@tauri-apps/api/core'
 import {Pencil, Plus, TableProperties, Users} from 'lucide-vue-next'
 import {useStudentStore} from '../stores/student'
 import StudentModal from '../components/StudentModal.vue'
@@ -13,6 +12,7 @@ const modalMode = ref('add')
 const selectedStudent = ref(null)
 const studentModalRef = ref(null)
 const bulkModalVisible = ref(false)
+const saving = ref(false)
 
 onMounted(() => {
   studentStore.fetchStudents()
@@ -52,19 +52,19 @@ function closeModal() {
 }
 
 async function handleSaved({grade, classNum, number, name}) {
+  if (saving.value) return
+  saving.value = true
   try {
     if (modalMode.value === 'add') {
       await studentStore.createStudent(grade, classNum, number, name)
     } else {
-      await invoke('update_student', {
-        id: selectedStudent.value.id,
-        grade, classNum, number, name,
-      })
-      await studentStore.fetchStudents()
+      await studentStore.updateStudent(selectedStudent.value.id, grade, classNum, number, name)
     }
     closeModal()
   } catch (e) {
     studentModalRef.value?.setServerError(String(e))
+  } finally {
+    saving.value = false
   }
 }
 
@@ -73,7 +73,7 @@ async function handleDeleted() {
     await studentStore.deleteStudent(selectedStudent.value.id)
     closeModal()
   } catch (e) {
-    console.error(e)
+    studentModalRef.value?.setServerError(String(e))
   }
 }
 </script>
