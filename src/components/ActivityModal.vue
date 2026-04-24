@@ -338,6 +338,7 @@ function handleDelete() {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: auto
 }
 
 .warning-header {
