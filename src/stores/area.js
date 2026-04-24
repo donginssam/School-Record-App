@@ -40,5 +40,13 @@ export const useAreaStore = defineStore('area', () => {
         await fetchAreas()
     }
 
-    return {areas, loading, error, fetchAreas, createArea, updateArea, deleteArea, setAreaActivities}
+    async function getAreaStudents(areaId) {
+        return await invoke('get_area_students', {areaId})
+    }
+
+    async function setAreaStudents(areaId, studentIds) {
+        await invoke('set_area_students', {areaId, studentIds})
+    }
+
+    return {areas, loading, error, fetchAreas, createArea, updateArea, deleteArea, setAreaActivities, getAreaStudents, setAreaStudents}
 })

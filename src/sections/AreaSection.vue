@@ -86,7 +86,7 @@ async function handleDeleted() {
 async function openStudentModal(area) {
   studentModalArea.value = area
   try {
-    studentModalInitialIds.value = await invoke('get_area_students', {areaId: area.id})
+    studentModalInitialIds.value = await areaStore.getAreaStudents(area.id)
   } catch (e) {
     studentModalInitialIds.value = []
     areaStore.error = `학생 목록을 불러오지 못했습니다: ${e}`
@@ -102,7 +102,7 @@ function closeStudentModal() {
 
 async function handleStudentSaved(studentIds) {
   try {
-    await invoke('set_area_students', {areaId: studentModalArea.value.id, studentIds})
+    await areaStore.setAreaStudents(studentModalArea.value.id, studentIds)
     closeStudentModal()
   } catch (e) {
     areaStudentModalRef.value?.setServerError(String(e))
