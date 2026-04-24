@@ -111,11 +111,14 @@ CREATE TABLE IF NOT EXISTS ReplaceRule
 CREATE INDEX IF NOT EXISTS idx_replace_rule_priority ON ReplaceRule (priority);
 
 INSERT INTO ReplaceRule (old_text, new_text, priority) VALUES
-    ('"', '''', 0),
-    ('"', '''', 1),
-    (''', '''', 2),
-    (''', '''', 3),
+    ('“', '''', 0),  -- 왼쪽 쌍따옴표
+    ('”', '''', 1),  -- 오른쪽 쌍따옴표
+    ('‘', '''', 2),  -- 왼쪽 홑따옴표
+    ('’', '''', 3),  -- 오른쪽 홑따옴표
     ('「', '''', 4),
     ('」', '''', 5),
     ('『', '''', 6),
-    ('』', '''', 7);
+    ('』', '''', 7),
+    ('<', '''', 8),
+    ('>', '''', 9),
+    ('`', '''', 10);
