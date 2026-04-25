@@ -1,0 +1,234 @@
+use crate::state::{DbState, unique_err};
+use crate::types::{BulkUpsertResult, StudentInput, StudentItem};
+use tauri::State;
+
+#[tauri::command]
+pub fn get_students(state: State<DbState>) -> Result<Vec<StudentItem>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, grade, class_num, number, name
+             FROM Student
+             ORDER BY grade, class_num, number",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let students = stmt
+        .query_map([], |row| {
+            Ok(StudentItem {
+                id: row.get(0)?,
+                grade: row.get(1)?,
+                class_num: row.get(2)?,
+                number: row.get(3)?,
+                name: row.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(students)
+}
+
+#[tauri::command]
+pub fn create_student(
+    grade: i64,
+    class_num: i64,
+    number: i64,
+    name: String,
+    state: State<DbState>,
+) -> Result<i64, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    conn.execute(
+        "INSERT INTO Student (grade, class_num, number, name) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![grade, class_num, number, name],
+    )
+    .map_err(|e| unique_err(&e, &format!("이미 같은 학번의 학생이 있습니다: {grade}학년 {class_num}반 {number}번")))?;
+
+    Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+pub fn update_student(
+    id: i64,
+    grade: i64,
+    class_num: i64,
+    number: i64,
+    name: String,
+    state: State<DbState>,
+) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    conn.execute(
+        "UPDATE Student SET grade = ?1, class_num = ?2, number = ?3, name = ?4 WHERE id = ?5",
+        rusqlite::params![grade, class_num, number, name, id],
+    )
+    .map_err(|e| unique_err(&e, &format!("이미 같은 학번의 학생이 있습니다: {grade}학년 {class_num}반 {number}번")))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_student(id: i64, state: State<DbState>) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    conn.execute("DELETE FROM Student WHERE id = ?1", rusqlite::params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_area_activities(
+    area_id: i64,
+    activity_ids: Vec<i64>,
+    state: State<DbState>,
+) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
+    let result = (|| -> Result<(), String> {
+        conn.execute(
+            "DELETE FROM AreaActivity WHERE area_id = ?1",
+            rusqlite::params![area_id],
+        )
+        .map_err(|e| e.to_string())?;
+
+        for act_id in activity_ids.iter() {
+            conn.execute(
+                "INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)",
+                rusqlite::params![area_id, act_id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    })();
+    match result {
+        Ok(_) => conn.execute_batch("COMMIT").map_err(|e| e.to_string()),
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
+}
+
+#[tauri::command]
+pub fn bulk_upsert_students(
+    students: Vec<StudentInput>,
+    state: State<DbState>,
+) -> Result<BulkUpsertResult, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
+    let result = (|| -> Result<BulkUpsertResult, String> {
+        let mut inserted: i64 = 0;
+        let mut updated: i64 = 0;
+        for s in students.iter() {
+            conn.execute(
+                "INSERT OR IGNORE INTO Student (grade, class_num, number, name)
+                 VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![s.grade, s.class_num, s.number, s.name],
+            )
+            .map_err(|e| e.to_string())?;
+
+            if conn.changes() > 0 {
+                inserted += 1;
+            } else {
+                conn.execute(
+                    "UPDATE Student SET name = ?1 WHERE grade=?2 AND class_num=?3 AND number=?4",
+                    rusqlite::params![s.name, s.grade, s.class_num, s.number],
+                )
+                .map_err(|e| e.to_string())?;
+                updated += 1;
+            }
+        }
+        Ok(BulkUpsertResult { inserted, updated })
+    })();
+    match result {
+        Ok(r) => {
+            conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
+            Ok(r)
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
+}
+
+#[tauri::command]
+pub fn get_area_students(area_id: i64, state: State<DbState>) -> Result<Vec<i64>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    let mut stmt = conn
+        .prepare("SELECT student_id FROM AreaStudent WHERE area_id = ?1")
+        .map_err(|e| e.to_string())?;
+
+    let ids = stmt
+        .query_map(rusqlite::params![area_id], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<i64>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(ids)
+}
+
+#[tauri::command]
+pub fn set_area_students(
+    area_id: i64,
+    student_ids: Vec<i64>,
+    state: State<DbState>,
+) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+
+    conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
+    let result = (|| -> Result<(), String> {
+        conn.execute(
+            "DELETE FROM AreaStudent WHERE area_id = ?1",
+            rusqlite::params![area_id],
+        )
+        .map_err(|e| e.to_string())?;
+
+        for student_id in student_ids.iter() {
+            conn.execute(
+                "INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)",
+                rusqlite::params![area_id, student_id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    })();
+    match result {
+        Ok(_) => conn.execute_batch("COMMIT").map_err(|e| e.to_string()),
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
+}
