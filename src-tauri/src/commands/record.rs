@@ -7,13 +7,7 @@ use rusqlite::{Connection, OptionalExtension};
 use std::collections::HashMap;
 use tauri::State;
 
-#[tauri::command]
-pub fn get_area_grid(area_id: i64, state: State<DbState>) -> Result<AreaGridData, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn get_area_grid_impl(conn: &Connection, area_id: i64) -> Result<AreaGridData, String> {
     let mut stmt = conn
         .prepare(
             "SELECT act.id, act.name
@@ -102,17 +96,20 @@ pub fn get_area_grid(area_id: i64, state: State<DbState>) -> Result<AreaGridData
 }
 
 #[tauri::command]
-pub fn upsert_record(
-    activity_id: i64,
-    student_id: i64,
-    content: String,
-    state: State<DbState>,
-) -> Result<(), String> {
+pub fn get_area_grid(area_id: i64, state: State<DbState>) -> Result<AreaGridData, String> {
     let guard = state.0.lock().unwrap();
     let conn = guard
         .as_ref()
         .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    get_area_grid_impl(conn, area_id)
+}
 
+pub fn upsert_record_impl(
+    conn: &Connection,
+    activity_id: i64,
+    student_id: i64,
+    content: &str,
+) -> Result<(), String> {
     conn.execute(
         "INSERT INTO ActivityRecord (activity_id, student_id, content, updated_at)
          VALUES (?1, ?2, ?3, datetime('now'))
@@ -127,18 +124,26 @@ pub fn upsert_record(
 }
 
 #[tauri::command]
-pub fn get_record_history(
+pub fn upsert_record(
     activity_id: i64,
     student_id: i64,
-    limit: i64,
-    offset: i64,
+    content: String,
     state: State<DbState>,
-) -> Result<Vec<HistoryEntry>, String> {
+) -> Result<(), String> {
     let guard = state.0.lock().unwrap();
     let conn = guard
         .as_ref()
         .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    upsert_record_impl(conn, activity_id, student_id, &content)
+}
 
+pub fn get_record_history_impl(
+    conn: &Connection,
+    activity_id: i64,
+    student_id: i64,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<HistoryEntry>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT h.id, h.content, h.changed_at, h.note
@@ -164,6 +169,21 @@ pub fn get_record_history(
         .map_err(|e| e.to_string())?;
 
     Ok(entries)
+}
+
+#[tauri::command]
+pub fn get_record_history(
+    activity_id: i64,
+    student_id: i64,
+    limit: i64,
+    offset: i64,
+    state: State<DbState>,
+) -> Result<Vec<HistoryEntry>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    get_record_history_impl(conn, activity_id, student_id, limit, offset)
 }
 
 pub fn save_snapshot_internal(
@@ -220,6 +240,102 @@ pub fn save_history_snapshot(
     save_snapshot_internal(conn, activity_id, student_id, note.as_deref())
 }
 
+pub fn bulk_import_records_impl(
+    conn: &Connection,
+    records: &[ImportRecordInput],
+) -> Result<BulkImportResult, String> {
+    let mut students_created: i64 = 0;
+    let mut students_updated: i64 = 0;
+    let mut records_saved: i64 = 0;
+    let mut student_cache: HashMap<(i64, i64, i64), i64> = HashMap::new();
+
+    for r in records.iter() {
+        let key = (r.grade, r.class_num, r.number);
+
+        if !student_cache.contains_key(&key) {
+            let exists: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM Student WHERE grade=?1 AND class_num=?2 AND number=?3",
+                    rusqlite::params![r.grade, r.class_num, r.number],
+                    |row| row.get::<_, i64>(0),
+                )
+                .map_err(|e| e.to_string())?
+                > 0;
+
+            if exists {
+                if let Some(ref n) = r.name {
+                    if !n.is_empty() {
+                        let existing_name: String = conn
+                            .query_row(
+                                "SELECT name FROM Student WHERE grade=?1 AND class_num=?2 AND number=?3",
+                                rusqlite::params![r.grade, r.class_num, r.number],
+                                |row| row.get(0),
+                            )
+                            .map_err(|e| e.to_string())?;
+                        if existing_name.trim().is_empty() {
+                            conn.execute(
+                                "UPDATE Student SET name = ?1 WHERE grade=?2 AND class_num=?3 AND number=?4",
+                                rusqlite::params![n, r.grade, r.class_num, r.number],
+                            )
+                            .map_err(|e| e.to_string())?;
+                        }
+                    }
+                }
+                students_updated += 1;
+            } else {
+                let name = r.name.as_deref().unwrap_or("이름 없음");
+                conn.execute(
+                    "INSERT INTO Student (grade, class_num, number, name) VALUES (?1, ?2, ?3, ?4)",
+                    rusqlite::params![r.grade, r.class_num, r.number, name],
+                )
+                .map_err(|e| e.to_string())?;
+                students_created += 1;
+            }
+
+            let student_id: i64 = conn
+                .query_row(
+                    "SELECT id FROM Student WHERE grade=?1 AND class_num=?2 AND number=?3",
+                    rusqlite::params![r.grade, r.class_num, r.number],
+                    |row| row.get(0),
+                )
+                .map_err(|e| e.to_string())?;
+
+            student_cache.insert(key, student_id);
+        }
+
+        let &student_id = student_cache.get(&key).ok_or_else(|| "캐시 오류".to_string())?;
+
+        conn.execute(
+            "INSERT INTO ActivityRecord (activity_id, student_id, content, updated_at)
+             VALUES (?1, ?2, ?3, datetime('now'))
+             ON CONFLICT(activity_id, student_id) DO UPDATE SET
+               content = excluded.content,
+               updated_at = excluded.updated_at",
+            rusqlite::params![r.activity_id, student_id, r.content],
+        )
+        .map_err(|e| e.to_string())?;
+
+        if !r.content.is_empty() {
+            conn.execute(
+                "INSERT INTO ActivityRecordHistory (activity_record_id, content, changed_at, note)
+                 SELECT r.id, r.content, r.updated_at, 'import'
+                 FROM ActivityRecord r
+                 WHERE r.activity_id = ?1 AND r.student_id = ?2
+                   AND NOT EXISTS (
+                       SELECT 1 FROM ActivityRecordHistory h
+                       WHERE h.activity_record_id = r.id
+                         AND h.changed_at = r.updated_at
+                   )",
+                rusqlite::params![r.activity_id, student_id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        records_saved += 1;
+    }
+
+    Ok(BulkImportResult { students_created, students_updated, records_saved })
+}
+
 #[tauri::command]
 pub fn bulk_import_records(
     records: Vec<ImportRecordInput>,
@@ -232,100 +348,7 @@ pub fn bulk_import_records(
 
     conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
 
-    let result = (|| -> Result<BulkImportResult, String> {
-        let mut students_created: i64 = 0;
-        let mut students_updated: i64 = 0;
-        let mut records_saved: i64 = 0;
-        let mut student_cache: HashMap<(i64, i64, i64), i64> = HashMap::new();
-
-        for r in records.iter() {
-            let key = (r.grade, r.class_num, r.number);
-
-            if !student_cache.contains_key(&key) {
-                let exists: bool = conn
-                    .query_row(
-                        "SELECT COUNT(*) FROM Student WHERE grade=?1 AND class_num=?2 AND number=?3",
-                        rusqlite::params![r.grade, r.class_num, r.number],
-                        |row| row.get::<_, i64>(0),
-                    )
-                    .map_err(|e| e.to_string())?
-                    > 0;
-
-                if exists {
-                    if let Some(ref n) = r.name {
-                        if !n.is_empty() {
-                            let existing_name: String = conn
-                                .query_row(
-                                    "SELECT name FROM Student WHERE grade=?1 AND class_num=?2 AND number=?3",
-                                    rusqlite::params![r.grade, r.class_num, r.number],
-                                    |row| row.get(0),
-                                )
-                                .map_err(|e| e.to_string())?;
-                            if existing_name.trim().is_empty() {
-                                conn.execute(
-                                    "UPDATE Student SET name = ?1 WHERE grade=?2 AND class_num=?3 AND number=?4",
-                                    rusqlite::params![n, r.grade, r.class_num, r.number],
-                                )
-                                .map_err(|e| e.to_string())?;
-                            }
-                        }
-                    }
-                    students_updated += 1;
-                } else {
-                    let name = r.name.as_deref().unwrap_or("이름 없음");
-                    conn.execute(
-                        "INSERT INTO Student (grade, class_num, number, name) VALUES (?1, ?2, ?3, ?4)",
-                        rusqlite::params![r.grade, r.class_num, r.number, name],
-                    )
-                    .map_err(|e| e.to_string())?;
-                    students_created += 1;
-                }
-
-                let student_id: i64 = conn
-                    .query_row(
-                        "SELECT id FROM Student WHERE grade=?1 AND class_num=?2 AND number=?3",
-                        rusqlite::params![r.grade, r.class_num, r.number],
-                        |row| row.get(0),
-                    )
-                    .map_err(|e| e.to_string())?;
-
-                student_cache.insert(key, student_id);
-            }
-
-            let &student_id = student_cache.get(&key).ok_or_else(|| "캐시 오류".to_string())?;
-
-            conn.execute(
-                "INSERT INTO ActivityRecord (activity_id, student_id, content, updated_at)
-                 VALUES (?1, ?2, ?3, datetime('now'))
-                 ON CONFLICT(activity_id, student_id) DO UPDATE SET
-                   content = excluded.content,
-                   updated_at = excluded.updated_at",
-                rusqlite::params![r.activity_id, student_id, r.content],
-            )
-            .map_err(|e| e.to_string())?;
-
-            if !r.content.is_empty() {
-                conn.execute(
-                    "INSERT INTO ActivityRecordHistory (activity_record_id, content, changed_at, note)
-                     SELECT r.id, r.content, r.updated_at, 'import'
-                     FROM ActivityRecord r
-                     WHERE r.activity_id = ?1 AND r.student_id = ?2
-                       AND NOT EXISTS (
-                           SELECT 1 FROM ActivityRecordHistory h
-                           WHERE h.activity_record_id = r.id
-                             AND h.changed_at = r.updated_at
-                       )",
-                    rusqlite::params![r.activity_id, student_id],
-                )
-                .map_err(|e| e.to_string())?;
-            }
-            records_saved += 1;
-        }
-
-        Ok(BulkImportResult { students_created, students_updated, records_saved })
-    })();
-
-    match result {
+    match bulk_import_records_impl(conn, &records) {
         Ok(r) => {
             conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
             Ok(r)
@@ -337,16 +360,10 @@ pub fn bulk_import_records(
     }
 }
 
-#[tauri::command]
-pub fn preview_import_records(
-    records: Vec<ImportRecordInput>,
-    state: State<DbState>,
+pub fn preview_import_records_impl(
+    conn: &Connection,
+    records: &[ImportRecordInput],
 ) -> Result<Vec<PreviewImportItem>, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
     let mut result = Vec::new();
     let mut student_cache: HashMap<(i64, i64, i64), Option<(i64, String)>> = HashMap::new();
     let mut activity_cache: HashMap<i64, String> = HashMap::new();
@@ -415,4 +432,16 @@ pub fn preview_import_records(
     }
 
     Ok(result)
+}
+
+#[tauri::command]
+pub fn preview_import_records(
+    records: Vec<ImportRecordInput>,
+    state: State<DbState>,
+) -> Result<Vec<PreviewImportItem>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    preview_import_records_impl(conn, &records)
 }

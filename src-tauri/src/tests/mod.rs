@@ -5,6 +5,7 @@ pub mod db_tests;
 pub mod area_tests;
 pub mod activity_tests;
 pub mod student_tests;
+pub mod record_tests;
 
 pub fn setup_test_db() -> Connection {
     let conn = Connection::open_in_memory().unwrap();
