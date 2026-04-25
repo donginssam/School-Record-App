@@ -1482,10 +1482,14 @@ fn create_replace_rule(
 
         let is_regex_int: i64 = if is_regex { 1 } else { 0 };
         conn.execute(
-            "INSERT INTO ReplaceRule (old_text, new_text, is_regex, priority) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT OR IGNORE INTO ReplaceRule (old_text, new_text, is_regex, priority) VALUES (?1, ?2, ?3, ?4)",
             rusqlite::params![old_text, new_text, is_regex_int, priority],
         )
         .map_err(|e| e.to_string())?;
+
+        if conn.changes() == 0 {
+            return Err("이미 동일한 규칙이 존재합니다.".to_string());
+        }
 
         let id = conn.last_insert_rowid();
         conn.query_row(
@@ -1619,7 +1623,7 @@ fn seed_default_replace_rules(
         let priority = rule["priority"].as_i64().ok_or("priority 누락")?;
         let is_regex: i64 = if rule["isRegex"].as_bool().unwrap_or(false) { 1 } else { 0 };
         conn.execute(
-            "INSERT INTO ReplaceRule (old_text, new_text, is_regex, priority) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT OR IGNORE INTO ReplaceRule (old_text, new_text, is_regex, priority) VALUES (?1, ?2, ?3, ?4)",
             rusqlite::params![old_text, new_text, is_regex, priority],
         )
         .map_err(|e| {

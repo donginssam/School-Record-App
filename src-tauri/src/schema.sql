@@ -106,7 +106,8 @@ CREATE TABLE IF NOT EXISTS ReplaceRule
     enabled    INTEGER NOT NULL DEFAULT 1,
     priority   INTEGER NOT NULL DEFAULT 0,
     created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
-    updated_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    UNIQUE (old_text, new_text)
 );
 
 CREATE INDEX IF NOT EXISTS idx_replace_rule_priority ON ReplaceRule (priority);
