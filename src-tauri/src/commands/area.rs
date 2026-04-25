@@ -1,15 +1,10 @@
 use crate::state::{DbState, unique_err};
 use crate::types::{ActivityItem, AreaItem};
+use rusqlite::Connection;
 use std::collections::HashMap;
 use tauri::State;
 
-#[tauri::command]
-pub fn get_areas(state: State<DbState>) -> Result<Vec<AreaItem>, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn get_areas_impl(conn: &Connection) -> Result<Vec<AreaItem>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT a.id, a.name, a.byte_limit,
@@ -62,13 +57,7 @@ pub fn get_areas(state: State<DbState>) -> Result<Vec<AreaItem>, String> {
     Ok(areas)
 }
 
-#[tauri::command]
-pub fn create_area(name: String, byte_limit: i64, state: State<DbState>) -> Result<i64, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn create_area_impl(conn: &Connection, name: &str, byte_limit: i64) -> Result<i64, String> {
     conn.execute(
         "INSERT INTO Area (name, byte_limit) VALUES (?1, ?2)",
         rusqlite::params![name, byte_limit],
@@ -78,13 +67,7 @@ pub fn create_area(name: String, byte_limit: i64, state: State<DbState>) -> Resu
     Ok(conn.last_insert_rowid())
 }
 
-#[tauri::command]
-pub fn update_area(id: i64, name: String, byte_limit: i64, state: State<DbState>) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn update_area_impl(conn: &Connection, id: i64, name: &str, byte_limit: i64) -> Result<(), String> {
     conn.execute(
         "UPDATE Area SET name = ?1, byte_limit = ?2 WHERE id = ?3",
         rusqlite::params![name, byte_limit, id],
@@ -94,15 +77,47 @@ pub fn update_area(id: i64, name: String, byte_limit: i64, state: State<DbState>
     Ok(())
 }
 
+pub fn delete_area_impl(conn: &Connection, id: i64) -> Result<(), String> {
+    conn.execute("DELETE FROM Area WHERE id = ?1", rusqlite::params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+// ── Tauri 커맨드 (얇은 래퍼) ─────────────────────────────────
+
+#[tauri::command]
+pub fn get_areas(state: State<DbState>) -> Result<Vec<AreaItem>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    get_areas_impl(conn)
+}
+
+#[tauri::command]
+pub fn create_area(name: String, byte_limit: i64, state: State<DbState>) -> Result<i64, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    create_area_impl(conn, &name, byte_limit)
+}
+
+#[tauri::command]
+pub fn update_area(id: i64, name: String, byte_limit: i64, state: State<DbState>) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    update_area_impl(conn, id, &name, byte_limit)
+}
+
 #[tauri::command]
 pub fn delete_area(id: i64, state: State<DbState>) -> Result<(), String> {
     let guard = state.0.lock().unwrap();
     let conn = guard
         .as_ref()
         .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
-    conn.execute("DELETE FROM Area WHERE id = ?1", rusqlite::params![id])
-        .map_err(|e| e.to_string())?;
-
-    Ok(())
+    delete_area_impl(conn, id)
 }
