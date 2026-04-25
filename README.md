@@ -100,6 +100,13 @@ npm install
 npm run tauri dev
 ```
 
+### 테스트
+
+```bash
+# Cargo Test
+cargo test --manifest-path src-tauri/Cargo.toml
+```
+
 ### 빌드
 
 ```bash
