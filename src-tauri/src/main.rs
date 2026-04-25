@@ -1882,7 +1882,7 @@ fn add_synonym_word(group_id: i64, word: String, state: State<DbState>) -> Resul
     let guard = state.0.lock().unwrap();
     let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
     conn.execute(
-        "INSERT INTO SynonymItem (group_id, word) VALUES (?1, ?2)",
+        "INSERT OR IGNORE INTO SynonymItem (group_id, word) VALUES (?1, ?2)",
         rusqlite::params![group_id, word],
     )
     .map_err(|e| e.to_string())?;
@@ -1921,7 +1921,7 @@ fn seed_default_synonyms(groups: Vec<SeedGroupInput>, state: State<DbState>) -> 
         let gid = conn.last_insert_rowid();
         for word in &group.words {
             conn.execute(
-                "INSERT INTO SynonymItem (group_id, word) VALUES (?1, ?2)",
+                "INSERT OR IGNORE INTO SynonymItem (group_id, word) VALUES (?1, ?2)",
                 rusqlite::params![gid, word],
             )
             .map_err(|e| {

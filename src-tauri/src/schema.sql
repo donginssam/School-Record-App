@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS SynonymItem
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     group_id INTEGER NOT NULL,
     word     TEXT    NOT NULL,
+    UNIQUE (group_id, word),
     FOREIGN KEY (group_id) REFERENCES SynonymGroup (id) ON DELETE CASCADE
 );
 
