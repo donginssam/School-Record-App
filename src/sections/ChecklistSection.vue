@@ -441,6 +441,18 @@ async function doExport() {
             </div>
           </div>
 
+          <div class="notice-box">
+            <span class="notice-icon">ℹ</span>
+            <div class="notice-body">
+              <p class="notice-text">
+                이 파일은 학교생활기록부 작성을 돕기 위한 <strong>참고용 자료</strong>입니다.<br>
+                반드시 <u><strong>담당 선생님께서 내용을 직접 검토</strong></u>하신 후 나이스(NEIS)에 입력해 주시기를
+                부탁드립니다.
+              </p>
+              <p class="notice-consent">내보내기를 실행하면 위 안내 사항을 확인하신 것으로 간주합니다.</p>
+            </div>
+          </div>
+
           <p v-if="exportError" class="error-text">{{ exportError }}</p>
 
           <button class="btn-export" :disabled="exporting" @click="doExport">
@@ -847,6 +859,50 @@ async function doExport() {
 .summary-val {
   font-size: 14px;
   color: #c8d8f0;
+}
+
+.notice-box {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 14px 0 24px;
+  padding: 12px 14px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.08);
+  border-radius: 8px;
+}
+
+.notice-icon {
+  color: #fbbf24;
+  flex-shrink: 0;
+  margin-top: 3px;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 50%;
+}
+
+.notice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notice-text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #c8d8f0;
+}
+
+.notice-consent {
+  margin: 0;
+  font-size: 14px;
+  color: #7a9bbf;
 }
 
 .btn-export {
