@@ -53,6 +53,9 @@ pub fn detect_conflicts(rules: &[ReplaceRule]) -> HashMap<i64, Vec<i64>> {
             }
             let ri = &rules[i];
             let rj = &rules[j];
+            if !ri.enabled || !rj.enabled {
+                continue;
+            }
             if ri.is_regex || rj.is_regex {
                 continue;
             }

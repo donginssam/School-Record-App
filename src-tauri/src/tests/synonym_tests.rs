@@ -217,6 +217,76 @@ fn test_get_all_records_for_inspect_unknown_scope_error() {
 }
 
 #[test]
+fn test_inspect_multiple_area_ids() {
+    let conn = setup_test_db();
+
+    conn.execute("INSERT INTO Area (name, byte_limit) VALUES ('영역1', 500)", []).unwrap();
+    let area1 = conn.last_insert_rowid();
+    conn.execute("INSERT INTO Area (name, byte_limit) VALUES ('영역2', 500)", []).unwrap();
+    let area2 = conn.last_insert_rowid();
+
+    conn.execute("INSERT INTO Activity (name) VALUES ('활동1')", []).unwrap();
+    let act1 = conn.last_insert_rowid();
+    conn.execute("INSERT INTO Activity (name) VALUES ('활동2')", []).unwrap();
+    let act2 = conn.last_insert_rowid();
+    conn.execute("INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)", rusqlite::params![area1, act1]).unwrap();
+    conn.execute("INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)", rusqlite::params![area2, act2]).unwrap();
+
+    conn.execute("INSERT INTO Student (grade, class_num, number, name) VALUES (1, 1, 1, '학생1')", []).unwrap();
+    let stu = conn.last_insert_rowid();
+    conn.execute("INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)", rusqlite::params![area1, stu]).unwrap();
+    conn.execute("INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)", rusqlite::params![area2, stu]).unwrap();
+
+    conn.execute("INSERT INTO ActivityRecord (activity_id, student_id, content) VALUES (?1, ?2, '기록1')", rusqlite::params![act1, stu]).unwrap();
+    conn.execute("INSERT INTO ActivityRecord (activity_id, student_id, content) VALUES (?1, ?2, '기록2')", rusqlite::params![act2, stu]).unwrap();
+
+    let records = get_all_records_for_inspect_impl(&conn, "areas", vec![area1, area2]).unwrap();
+    assert_eq!(records.len(), 2, "두 area_id로 조회 시 2개 기록 반환: {:?}", records);
+}
+
+#[test]
+fn test_inspect_area_student_filter() {
+    let conn = setup_test_db();
+
+    conn.execute("INSERT INTO Area (name, byte_limit) VALUES ('영역', 500)", []).unwrap();
+    let area = conn.last_insert_rowid();
+    conn.execute("INSERT INTO Activity (name) VALUES ('활동')", []).unwrap();
+    let act = conn.last_insert_rowid();
+    conn.execute("INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)", rusqlite::params![area, act]).unwrap();
+
+    conn.execute("INSERT INTO Student (grade, class_num, number, name) VALUES (1, 1, 1, '등록학생')", []).unwrap();
+    let stu1 = conn.last_insert_rowid();
+    conn.execute("INSERT INTO Student (grade, class_num, number, name) VALUES (1, 1, 2, '미등록학생')", []).unwrap();
+    let stu2 = conn.last_insert_rowid();
+    // stu1만 AreaStudent에 등록
+    conn.execute("INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)", rusqlite::params![area, stu1]).unwrap();
+
+    conn.execute("INSERT INTO ActivityRecord (activity_id, student_id, content) VALUES (?1, ?2, '기록1')", rusqlite::params![act, stu1]).unwrap();
+    conn.execute("INSERT INTO ActivityRecord (activity_id, student_id, content) VALUES (?1, ?2, '기록2')", rusqlite::params![act, stu2]).unwrap();
+
+    let records = get_all_records_for_inspect_impl(&conn, "areas", vec![area]).unwrap();
+    assert_eq!(records.len(), 1, "AreaStudent 미등록 학생 기록은 제외되어야 함");
+    assert_eq!(records[0].student_name, "등록학생");
+}
+
+#[test]
+fn test_inspect_coalesce_null_area_name() {
+    let conn = setup_test_db();
+
+    // Area 없이 Activity + Student + Record 생성
+    conn.execute("INSERT INTO Activity (name) VALUES ('독립활동')", []).unwrap();
+    let act = conn.last_insert_rowid();
+    conn.execute("INSERT INTO Student (grade, class_num, number, name) VALUES (2, 3, 5, '독립학생')", []).unwrap();
+    let stu = conn.last_insert_rowid();
+    conn.execute("INSERT INTO ActivityRecord (activity_id, student_id, content) VALUES (?1, ?2, '독립기록')", rusqlite::params![act, stu]).unwrap();
+
+    let records = get_all_records_for_inspect_impl(&conn, "all", vec![]).unwrap();
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].area_name, "", "area 미연결 기록은 area_name='' 이어야 함");
+    assert_eq!(records[0].student_name, "독립학생");
+}
+
+#[test]
 fn test_get_all_records_for_inspect_excludes_empty_content() {
     let conn = setup_test_db();
     conn.execute("INSERT INTO Activity (name) VALUES ('활동')", []).unwrap();

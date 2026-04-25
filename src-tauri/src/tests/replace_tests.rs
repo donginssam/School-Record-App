@@ -2,7 +2,8 @@ use crate::commands::replace::{
     create_replace_rule_db, delete_replace_rule_impl, get_replace_rules_impl,
     seed_default_replace_rules_impl, update_replace_rule_db, validate_replace_rule,
 };
-use super::setup_test_db;
+use crate::engine::{apply_rules, fetch_rules_from_db, get_records_for_scope};
+use super::{insert_activity, insert_record, insert_student, setup_test_db};
 
 // ── validate_replace_rule (순수 함수) ──────────────────────────
 
@@ -143,6 +144,62 @@ fn test_seed_default_rules_inserts_when_empty() {
         .query_row("SELECT COUNT(*) FROM ReplaceRule", [], |r| r.get(0))
         .unwrap();
     assert_eq!(count, 2);
+}
+
+#[test]
+fn test_disabled_rule_excluded_from_conflicts() {
+    let conn = setup_test_db();
+    let rule_a = create_replace_rule_db(&conn, "AA", "BB", false, 0).unwrap();
+    let rule_b = create_replace_rule_db(&conn, "BB", "CC", false, 1).unwrap();
+
+    // 초기 상태: cascade 충돌 있음 (AA→BB 이후 BB→CC 연쇄)
+    let rules = get_replace_rules_impl(&conn).unwrap();
+    let ra = rules.iter().find(|r| r.id == rule_a.id).unwrap();
+    assert!(
+        ra.conflicts.contains(&rule_b.id),
+        "B가 enabled일 때 A의 conflicts에 포함되어야 함: {:?}",
+        ra.conflicts
+    );
+
+    // rule B 비활성화
+    update_replace_rule_db(&conn, rule_b.id, "BB", "CC", false, false, 1).unwrap();
+
+    let rules = get_replace_rules_impl(&conn).unwrap();
+    let ra = rules.iter().find(|r| r.id == rule_a.id).unwrap();
+    assert!(
+        ra.conflicts.is_empty(),
+        "B가 disabled이면 A의 conflicts에서 제외되어야 함: {:?}",
+        ra.conflicts
+    );
+}
+
+#[test]
+fn test_regex_special_chars_roundtrip() {
+    let conn = setup_test_db();
+    let pattern = r#"\"[^\"]*\""#;
+    let rule = create_replace_rule_db(&conn, pattern, "QUOTED", true, 0).unwrap();
+
+    let rules = get_replace_rules_impl(&conn).unwrap();
+    let r = rules.iter().find(|r| r.id == rule.id).unwrap();
+    assert_eq!(r.old_text, pattern, "백슬래시·따옴표 포함 패턴이 DB 왕복 후 손상 없어야 함");
+    assert!(r.is_regex);
+}
+
+#[test]
+fn test_preview_replace_with_regex() {
+    let conn = setup_test_db();
+    let act_id = insert_activity(&conn, "활동1");
+    let stu_id = insert_student(&conn, 1, 1, 1, "학생1");
+    insert_record(&conn, act_id, stu_id, "줄바꿈\n\n테스트");
+
+    create_replace_rule_db(&conn, r"\n+", " ", true, 0).unwrap();
+
+    let rules = fetch_rules_from_db(&conn).unwrap();
+    let records = get_records_for_scope(&conn, "all", &[]).unwrap();
+    assert_eq!(records.len(), 1);
+    let result = apply_rules(&records[0].content, &rules);
+    assert!(!result.contains('\n'), "정규식 규칙 적용 후 개행 없어야 함: {:?}", result);
+    assert_eq!(result, "줄바꿈 테스트");
 }
 
 #[test]
