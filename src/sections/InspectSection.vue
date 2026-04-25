@@ -19,6 +19,7 @@ import {
 import {useSynonymStore} from '../stores/synonymStore'
 import {useAreaStore} from '../stores/area'
 import {performInspection} from '../services/synonymService'
+import DiffView from '../components/DiffView.vue'
 
 const store = useSynonymStore()
 const areaStore = useAreaStore()
@@ -27,6 +28,14 @@ const areaStore = useAreaStore()
 
 const step = ref(1)
 const bodyRef = ref(null)
+
+function buildBeforeText(content, detectedWords) {
+  let result = content
+  for (const word of detectedWords) {
+    result = result.replaceAll(word, '')
+  }
+  return result
+}
 
 watch(step, () => {
   bodyRef.value?.scrollTo({top: 0, behavior: 'smooth'})
@@ -583,7 +592,12 @@ onMounted(() => {
               <td class="cell-student">{{ record.student_name || '—' }}</td>
               <td class="cell-area">{{ record.area_name || '—' }}</td>
               <td class="cell-activity">{{ record.activity_name }}</td>
-              <td class="cell-content">{{ record.content }}</td>
+              <td class="cell-content">
+                <DiffView
+                    :before="buildBeforeText(record.content, detectedWords)"
+                    :after="record.content"
+                />
+              </td>
               <td class="cell-words">
                     <span
                         v-for="word in detectedWords"
@@ -1363,6 +1377,15 @@ onMounted(() => {
   line-height: 1.6;
   word-break: break-all;
   max-width: 400px;
+}
+
+.cell-content :deep(.diff-added) {
+  background-color: rgba(251, 191, 36, 0.3);
+  color: #f59e0b;
+}
+
+.cell-content :deep(.diff-removed) {
+  display: none;
 }
 
 .cell-words {
