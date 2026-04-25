@@ -1,15 +1,10 @@
 use crate::state::{DbState, unique_err};
 use crate::types::{ActivityDetail, AreaRef};
+use rusqlite::Connection;
 use std::collections::HashMap;
 use tauri::State;
 
-#[tauri::command]
-pub fn get_activities(state: State<DbState>) -> Result<Vec<ActivityDetail>, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn get_activities_impl(conn: &Connection) -> Result<Vec<ActivityDetail>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT act.id, act.name, a.id AS area_id, a.name AS area_name,
@@ -61,13 +56,7 @@ pub fn get_activities(state: State<DbState>) -> Result<Vec<ActivityDetail>, Stri
     Ok(activities)
 }
 
-#[tauri::command]
-pub fn create_activity(name: String, state: State<DbState>) -> Result<i64, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn create_activity_impl(conn: &Connection, name: &str) -> Result<i64, String> {
     conn.execute(
         "INSERT INTO Activity (name) VALUES (?1)",
         rusqlite::params![name],
@@ -77,13 +66,7 @@ pub fn create_activity(name: String, state: State<DbState>) -> Result<i64, Strin
     Ok(conn.last_insert_rowid())
 }
 
-#[tauri::command]
-pub fn update_activity(id: i64, name: String, state: State<DbState>) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn update_activity_impl(conn: &Connection, id: i64, name: &str) -> Result<(), String> {
     conn.execute(
         "UPDATE Activity SET name = ?1 WHERE id = ?2",
         rusqlite::params![name, id],
@@ -93,13 +76,7 @@ pub fn update_activity(id: i64, name: String, state: State<DbState>) -> Result<(
     Ok(())
 }
 
-#[tauri::command]
-pub fn delete_activity(id: i64, state: State<DbState>) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn delete_activity_impl(conn: &Connection, id: i64) -> Result<(), String> {
     conn.execute(
         "DELETE FROM Activity WHERE id = ?1",
         rusqlite::params![id],
@@ -109,17 +86,11 @@ pub fn delete_activity(id: i64, state: State<DbState>) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn set_activity_areas(
+pub fn set_activity_areas_impl(
+    conn: &Connection,
     activity_id: i64,
-    area_ids: Vec<i64>,
-    state: State<DbState>,
+    area_ids: &[i64],
 ) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
     conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
     let result = (|| -> Result<(), String> {
         conn.execute(
@@ -144,4 +115,55 @@ pub fn set_activity_areas(
             Err(e)
         }
     }
+}
+
+// ── Tauri 커맨드 (얇은 래퍼) ─────────────────────────────────
+
+#[tauri::command]
+pub fn get_activities(state: State<DbState>) -> Result<Vec<ActivityDetail>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    get_activities_impl(conn)
+}
+
+#[tauri::command]
+pub fn create_activity(name: String, state: State<DbState>) -> Result<i64, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    create_activity_impl(conn, &name)
+}
+
+#[tauri::command]
+pub fn update_activity(id: i64, name: String, state: State<DbState>) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    update_activity_impl(conn, id, &name)
+}
+
+#[tauri::command]
+pub fn delete_activity(id: i64, state: State<DbState>) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    delete_activity_impl(conn, id)
+}
+
+#[tauri::command]
+pub fn set_activity_areas(
+    activity_id: i64,
+    area_ids: Vec<i64>,
+    state: State<DbState>,
+) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    set_activity_areas_impl(conn, activity_id, &area_ids)
 }

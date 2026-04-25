@@ -3,6 +3,8 @@ use rusqlite::Connection;
 pub mod engine_tests;
 pub mod db_tests;
 pub mod area_tests;
+pub mod activity_tests;
+pub mod student_tests;
 
 pub fn setup_test_db() -> Connection {
     let conn = Connection::open_in_memory().unwrap();

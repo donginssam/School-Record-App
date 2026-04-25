@@ -1,14 +1,9 @@
 use crate::state::{DbState, unique_err};
 use crate::types::{BulkUpsertResult, StudentInput, StudentItem};
+use rusqlite::Connection;
 use tauri::State;
 
-#[tauri::command]
-pub fn get_students(state: State<DbState>) -> Result<Vec<StudentItem>, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn get_students_impl(conn: &Connection) -> Result<Vec<StudentItem>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT id, grade, class_num, number, name
@@ -34,19 +29,13 @@ pub fn get_students(state: State<DbState>) -> Result<Vec<StudentItem>, String> {
     Ok(students)
 }
 
-#[tauri::command]
-pub fn create_student(
+pub fn create_student_impl(
+    conn: &Connection,
     grade: i64,
     class_num: i64,
     number: i64,
-    name: String,
-    state: State<DbState>,
+    name: &str,
 ) -> Result<i64, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
     conn.execute(
         "INSERT INTO Student (grade, class_num, number, name) VALUES (?1, ?2, ?3, ?4)",
         rusqlite::params![grade, class_num, number, name],
@@ -56,20 +45,14 @@ pub fn create_student(
     Ok(conn.last_insert_rowid())
 }
 
-#[tauri::command]
-pub fn update_student(
+pub fn update_student_impl(
+    conn: &Connection,
     id: i64,
     grade: i64,
     class_num: i64,
     number: i64,
-    name: String,
-    state: State<DbState>,
+    name: &str,
 ) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
     conn.execute(
         "UPDATE Student SET grade = ?1, class_num = ?2, number = ?3, name = ?4 WHERE id = ?5",
         rusqlite::params![grade, class_num, number, name, id],
@@ -79,66 +62,17 @@ pub fn update_student(
     Ok(())
 }
 
-#[tauri::command]
-pub fn delete_student(id: i64, state: State<DbState>) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn delete_student_impl(conn: &Connection, id: i64) -> Result<(), String> {
     conn.execute("DELETE FROM Student WHERE id = ?1", rusqlite::params![id])
         .map_err(|e| e.to_string())?;
 
     Ok(())
 }
 
-#[tauri::command]
-pub fn set_area_activities(
-    area_id: i64,
-    activity_ids: Vec<i64>,
-    state: State<DbState>,
-) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
-    conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
-    let result = (|| -> Result<(), String> {
-        conn.execute(
-            "DELETE FROM AreaActivity WHERE area_id = ?1",
-            rusqlite::params![area_id],
-        )
-        .map_err(|e| e.to_string())?;
-
-        for act_id in activity_ids.iter() {
-            conn.execute(
-                "INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)",
-                rusqlite::params![area_id, act_id],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-        Ok(())
-    })();
-    match result {
-        Ok(_) => conn.execute_batch("COMMIT").map_err(|e| e.to_string()),
-        Err(e) => {
-            let _ = conn.execute_batch("ROLLBACK");
-            Err(e)
-        }
-    }
-}
-
-#[tauri::command]
-pub fn bulk_upsert_students(
-    students: Vec<StudentInput>,
-    state: State<DbState>,
+pub fn bulk_upsert_students_impl(
+    conn: &Connection,
+    students: &[StudentInput],
 ) -> Result<BulkUpsertResult, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
     conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
     let result = (|| -> Result<BulkUpsertResult, String> {
         let mut inserted: i64 = 0;
@@ -176,13 +110,7 @@ pub fn bulk_upsert_students(
     }
 }
 
-#[tauri::command]
-pub fn get_area_students(area_id: i64, state: State<DbState>) -> Result<Vec<i64>, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn get_area_students_impl(conn: &Connection, area_id: i64) -> Result<Vec<i64>, String> {
     let mut stmt = conn
         .prepare("SELECT student_id FROM AreaStudent WHERE area_id = ?1")
         .map_err(|e| e.to_string())?;
@@ -196,17 +124,11 @@ pub fn get_area_students(area_id: i64, state: State<DbState>) -> Result<Vec<i64>
     Ok(ids)
 }
 
-#[tauri::command]
-pub fn set_area_students(
+pub fn set_area_students_impl(
+    conn: &Connection,
     area_id: i64,
-    student_ids: Vec<i64>,
-    state: State<DbState>,
+    student_ids: &[i64],
 ) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
     conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
     let result = (|| -> Result<(), String> {
         conn.execute(
@@ -231,4 +153,133 @@ pub fn set_area_students(
             Err(e)
         }
     }
+}
+
+pub fn set_area_activities_impl(
+    conn: &Connection,
+    area_id: i64,
+    activity_ids: &[i64],
+) -> Result<(), String> {
+    conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
+    let result = (|| -> Result<(), String> {
+        conn.execute(
+            "DELETE FROM AreaActivity WHERE area_id = ?1",
+            rusqlite::params![area_id],
+        )
+        .map_err(|e| e.to_string())?;
+
+        for act_id in activity_ids.iter() {
+            conn.execute(
+                "INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)",
+                rusqlite::params![area_id, act_id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    })();
+    match result {
+        Ok(_) => conn.execute_batch("COMMIT").map_err(|e| e.to_string()),
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
+}
+
+// ── Tauri 커맨드 (얇은 래퍼) ─────────────────────────────────
+
+#[tauri::command]
+pub fn get_students(state: State<DbState>) -> Result<Vec<StudentItem>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    get_students_impl(conn)
+}
+
+#[tauri::command]
+pub fn create_student(
+    grade: i64,
+    class_num: i64,
+    number: i64,
+    name: String,
+    state: State<DbState>,
+) -> Result<i64, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    create_student_impl(conn, grade, class_num, number, &name)
+}
+
+#[tauri::command]
+pub fn update_student(
+    id: i64,
+    grade: i64,
+    class_num: i64,
+    number: i64,
+    name: String,
+    state: State<DbState>,
+) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    update_student_impl(conn, id, grade, class_num, number, &name)
+}
+
+#[tauri::command]
+pub fn delete_student(id: i64, state: State<DbState>) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    delete_student_impl(conn, id)
+}
+
+#[tauri::command]
+pub fn set_area_activities(
+    area_id: i64,
+    activity_ids: Vec<i64>,
+    state: State<DbState>,
+) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    set_area_activities_impl(conn, area_id, &activity_ids)
+}
+
+#[tauri::command]
+pub fn bulk_upsert_students(
+    students: Vec<StudentInput>,
+    state: State<DbState>,
+) -> Result<BulkUpsertResult, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    bulk_upsert_students_impl(conn, &students)
+}
+
+#[tauri::command]
+pub fn get_area_students(area_id: i64, state: State<DbState>) -> Result<Vec<i64>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    get_area_students_impl(conn, area_id)
+}
+
+#[tauri::command]
+pub fn set_area_students(
+    area_id: i64,
+    student_ids: Vec<i64>,
+    state: State<DbState>,
+) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard
+        .as_ref()
+        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    set_area_students_impl(conn, area_id, &student_ids)
 }
