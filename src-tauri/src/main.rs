@@ -1826,7 +1826,7 @@ fn get_synonym_groups(state: State<DbState>) -> Result<Vec<SynonymGroupFull>, St
             "SELECT sg.id, sg.name, sg.created_at, si.id, si.word
              FROM SynonymGroup sg
              LEFT JOIN SynonymItem si ON sg.id = si.group_id
-             ORDER BY sg.id, si.id",
+             ORDER BY sg.id, si.word",
         )
         .map_err(|e| e.to_string())?;
 
