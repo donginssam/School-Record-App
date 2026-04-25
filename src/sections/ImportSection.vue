@@ -586,7 +586,7 @@ async function doImport() {
 async function downloadSampleA() {
   const filePath = await save({
     title: 'A타입 예시 파일 저장',
-    defaultPath: 'A타입_예시.xlsx',
+    defaultPath: '예시_A타입.xlsx',
     filters: [{name: 'Excel 파일', extensions: ['xlsx']}],
   })
   if (!filePath) return
@@ -610,7 +610,7 @@ async function downloadSampleA() {
 async function downloadSampleB() {
   const filePath = await save({
     title: 'B타입 예시 파일 저장',
-    defaultPath: 'B타입_예시.xlsx',
+    defaultPath: '예시_B타입.xlsx',
     filters: [{name: 'Excel 파일', extensions: ['xlsx']}],
   })
   if (!filePath) return

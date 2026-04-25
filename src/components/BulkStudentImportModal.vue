@@ -79,7 +79,7 @@ const livePreviewRows = computed(() => {
 async function downloadSample() {
   const path = await save({
     title: '샘플 파일 저장',
-    defaultPath: 'sample_students.csv',
+    defaultPath: '예시_학생_명렬표.csv',
     filters: [{name: 'CSV', extensions: ['csv']}],
   })
   if (!path) return
