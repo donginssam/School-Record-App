@@ -243,3 +243,32 @@ fn test_set_area_activities_empty_clears_all() {
         .unwrap();
     assert_eq!(count, 0);
 }
+
+#[test]
+fn test_delete_student_cascades_area_student() {
+    let conn = setup_test_db();
+    let area_id = insert_area(&conn, "수학", 500);
+    let stu_id = insert_student(&conn, 1, 1, 1, "홍길동");
+    conn.execute(
+        "INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, stu_id],
+    ).unwrap();
+
+    delete_student_impl(&conn, stu_id).unwrap();
+
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM AreaStudent WHERE student_id=?1",
+            rusqlite::params![stu_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(count, 0);
+}
+
+#[test]
+fn test_get_students_empty() {
+    let conn = setup_test_db();
+    let students = get_students_impl(&conn).unwrap();
+    assert!(students.is_empty());
+}
