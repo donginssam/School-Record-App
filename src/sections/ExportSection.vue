@@ -104,6 +104,13 @@ function bufferToBase64(buffer) {
 
 // ── 내보내기 실행 ─────────────────────────────────────────────
 
+function normalizeContent(text) {
+  return text
+      .replace(/\n+/g, ' ')
+      .replace(/ {2,}/g, ' ')
+      .trim()
+}
+
 async function doExport() {
   if (!gridData.value) return
   exportError.value = ''
@@ -121,7 +128,7 @@ async function doExport() {
             번호: s.number,
             이름: s.name,
             활동명: a.name,
-            활동내용: records.find(r => r.student_id === s.id && r.activity_id === a.id)?.content ?? '',
+            활동내용: normalizeContent(records.find(r => r.student_id === s.id && r.activity_id === a.id)?.content ?? ''),
           }))
       )
     } else if (exportType.value === 'B') {
@@ -133,7 +140,7 @@ async function doExport() {
         ...Object.fromEntries(
             activities.map(a => [
               a.name,
-              records.find(r => r.student_id === s.id && r.activity_id === a.id)?.content ?? '',
+              normalizeContent(records.find(r => r.student_id === s.id && r.activity_id === a.id)?.content ?? ''),
             ])
         ),
       }))
@@ -145,8 +152,8 @@ async function doExport() {
         번호: s.number,
         이름: s.name,
         [areaCol]: activities
-            .map(a => records.find(r => r.student_id === s.id && r.activity_id === a.id)?.content ?? '')
-            .filter(c => c.trim() !== '')
+            .map(a => normalizeContent(records.find(r => r.student_id === s.id && r.activity_id === a.id)?.content ?? ''))
+            .filter(c => c !== '')
             .join(' '),
       }))
     }
