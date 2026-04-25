@@ -1,13 +1,10 @@
 use crate::state::{DbState, unique_err};
 use crate::types::{InspectRecord, SeedGroupInput, SynonymGroupFull, SynonymWordItem};
+use rusqlite::Connection;
 use std::collections::HashMap;
 use tauri::State;
 
-#[tauri::command]
-pub fn get_synonym_groups(state: State<DbState>) -> Result<Vec<SynonymGroupFull>, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn get_synonym_groups_impl(conn: &Connection) -> Result<Vec<SynonymGroupFull>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT sg.id, sg.name, sg.created_at, si.id, si.word
@@ -50,28 +47,19 @@ pub fn get_synonym_groups(state: State<DbState>) -> Result<Vec<SynonymGroupFull>
     Ok(groups)
 }
 
-#[tauri::command]
-pub fn create_synonym_group(name: String, state: State<DbState>) -> Result<i64, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-    conn.execute("INSERT INTO SynonymGroup (name) VALUES (?1)", [&name])
+pub fn create_synonym_group_impl(conn: &Connection, name: &str) -> Result<i64, String> {
+    conn.execute("INSERT INTO SynonymGroup (name) VALUES (?1)", [name])
         .map_err(|e| unique_err(&e, "이미 존재하는 그룹명입니다."))?;
     Ok(conn.last_insert_rowid())
 }
 
-#[tauri::command]
-pub fn delete_synonym_group(id: i64, state: State<DbState>) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+pub fn delete_synonym_group_impl(conn: &Connection, id: i64) -> Result<(), String> {
     conn.execute("DELETE FROM SynonymGroup WHERE id = ?1", [id])
         .map_err(|e| e.to_string())?;
     Ok(())
 }
 
-#[tauri::command]
-pub fn add_synonym_word(group_id: i64, word: String, state: State<DbState>) -> Result<i64, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+pub fn add_synonym_word_impl(conn: &Connection, group_id: i64, word: &str) -> Result<i64, String> {
     conn.execute(
         "INSERT OR IGNORE INTO SynonymItem (group_id, word) VALUES (?1, ?2)",
         rusqlite::params![group_id, word],
@@ -80,20 +68,13 @@ pub fn add_synonym_word(group_id: i64, word: String, state: State<DbState>) -> R
     Ok(conn.last_insert_rowid())
 }
 
-#[tauri::command]
-pub fn delete_synonym_word(id: i64, state: State<DbState>) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+pub fn delete_synonym_word_impl(conn: &Connection, id: i64) -> Result<(), String> {
     conn.execute("DELETE FROM SynonymItem WHERE id = ?1", [id])
         .map_err(|e| e.to_string())?;
     Ok(())
 }
 
-#[tauri::command]
-pub fn seed_default_synonyms(groups: Vec<SeedGroupInput>, state: State<DbState>) -> Result<(), String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
+pub fn seed_default_synonyms_impl(conn: &Connection, groups: &[SeedGroupInput]) -> Result<(), String> {
     let count: i64 = conn
         .query_row("SELECT COUNT(*) FROM SynonymGroup", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;
@@ -103,7 +84,7 @@ pub fn seed_default_synonyms(groups: Vec<SeedGroupInput>, state: State<DbState>)
     }
 
     conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
-    for group in &groups {
+    for group in groups {
         conn.execute("INSERT INTO SynonymGroup (name) VALUES (?1)", [&group.name])
             .map_err(|e| {
                 let _ = conn.execute_batch("ROLLBACK");
@@ -125,15 +106,11 @@ pub fn seed_default_synonyms(groups: Vec<SeedGroupInput>, state: State<DbState>)
     Ok(())
 }
 
-#[tauri::command]
-pub fn get_all_records_for_inspect(
-    scope_type: String,
+pub fn get_all_records_for_inspect_impl(
+    conn: &Connection,
+    scope_type: &str,
     area_ids: Vec<i64>,
-    state: State<DbState>,
 ) -> Result<Vec<InspectRecord>, String> {
-    let guard = state.0.lock().unwrap();
-    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-
     let map_row = |row: &rusqlite::Row| {
         Ok(InspectRecord {
             id:            row.get(0)?,
@@ -147,7 +124,7 @@ pub fn get_all_records_for_inspect(
         })
     };
 
-    match scope_type.as_str() {
+    match scope_type {
         "all" => {
             let mut stmt = conn
                 .prepare(
@@ -192,4 +169,59 @@ pub fn get_all_records_for_inspect(
         }
         _ => Err(format!("알 수 없는 scope_type: {scope_type}")),
     }
+}
+
+// ── Tauri 명령어 래퍼 ──────────────────────────────────────────
+
+#[tauri::command]
+pub fn get_synonym_groups(state: State<DbState>) -> Result<Vec<SynonymGroupFull>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    get_synonym_groups_impl(conn)
+}
+
+#[tauri::command]
+pub fn create_synonym_group(name: String, state: State<DbState>) -> Result<i64, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    create_synonym_group_impl(conn, &name)
+}
+
+#[tauri::command]
+pub fn delete_synonym_group(id: i64, state: State<DbState>) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    delete_synonym_group_impl(conn, id)
+}
+
+#[tauri::command]
+pub fn add_synonym_word(group_id: i64, word: String, state: State<DbState>) -> Result<i64, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    add_synonym_word_impl(conn, group_id, &word)
+}
+
+#[tauri::command]
+pub fn delete_synonym_word(id: i64, state: State<DbState>) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    delete_synonym_word_impl(conn, id)
+}
+
+#[tauri::command]
+pub fn seed_default_synonyms(groups: Vec<SeedGroupInput>, state: State<DbState>) -> Result<(), String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    seed_default_synonyms_impl(conn, &groups)
+}
+
+#[tauri::command]
+pub fn get_all_records_for_inspect(
+    scope_type: String,
+    area_ids: Vec<i64>,
+    state: State<DbState>,
+) -> Result<Vec<InspectRecord>, String> {
+    let guard = state.0.lock().unwrap();
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    get_all_records_for_inspect_impl(conn, &scope_type, area_ids)
 }

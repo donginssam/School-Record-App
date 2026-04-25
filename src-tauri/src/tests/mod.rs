@@ -8,6 +8,7 @@ pub mod student_tests;
 pub mod record_tests;
 pub mod snapshot_tests;
 pub mod replace_tests;
+pub mod synonym_tests;
 
 pub fn setup_test_db() -> Connection {
     let conn = Connection::open_in_memory().unwrap();

@@ -173,7 +173,7 @@ pub struct SeedGroupInput {
     pub words: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct InspectRecord {
     pub id: i64,
     pub activity_name: String,
