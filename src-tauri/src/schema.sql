@@ -135,3 +135,13 @@ CREATE TABLE IF NOT EXISTS SynonymItem
 );
 
 CREATE INDEX IF NOT EXISTS idx_synonym_item_group ON SynonymItem (group_id);
+
+-- ================================================================
+-- 앱 설정
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS APP_CONFIGS
+(
+    config_key   TEXT PRIMARY KEY,
+    config_value TEXT NOT NULL
+);
