@@ -1,5 +1,7 @@
 # All-in-One 학교생활기록부 에디터
 
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-orange)](https://polyformproject.org/licenses/noncommercial/1.0.0) [![GitHub Release](https://img.shields.io/github/v/release/itmir913/School-Record-App?label=latest&color=blue)](https://github.com/itmir913/School-Record-App/releases/latest)
+
 > **Teacher Utility Kit** — 교사를 위한 학교생활기록부 작성 도구
 
 🔗 **[공식 페이지에서 자세한 안내 확인하기](https://luminousky.com/teacher-utility-kit/neis-editor/)**
