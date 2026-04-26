@@ -122,7 +122,7 @@ const navGroups = [
           @click="openFolder"
           :title="filePath"
       >
-        <FolderOpen :size="18" class="file-icon"/>
+        <FolderOpen :size="20" class="file-icon"/>
         <span v-if="!collapsed" class="file-name">{{ fileName }}</span>
       </button>
 
@@ -134,7 +134,7 @@ const navGroups = [
           @click="$emit('openSnapshot')"
           title="스냅샷 관리"
       >
-        <GitBranch :size="18" class="autosave-icon"/>
+        <GitBranch :size="20" class="autosave-icon"/>
         <span v-if="!collapsed" class="autosave-text">스냅샷(Snapshot)</span>
       </button>
     </div>
@@ -315,7 +315,7 @@ const navGroups = [
 .file-name {
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .autosave-indicator {
@@ -352,7 +352,7 @@ const navGroups = [
 }
 
 .autosave-text {
-  font-size: 13px;
+  font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
