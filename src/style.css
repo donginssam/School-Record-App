@@ -28,106 +28,105 @@
   background-color: #0d1220;
 }
 
-@layer components {
-  /* ── Overlay ─────────────────────────────── */
-  .modal-overlay {
+/* ── Overlay ─────────────────────────────── */
+.modal-overlay {
     position: fixed; inset: 0; z-index: 50;
     display: flex; align-items: center; justify-content: center;
     background-color: rgba(4, 6, 12, 0.75);
     backdrop-filter: blur(6px);
-  }
+}
 
-  /* ── Container ───────────────────────────── */
-  .modal-container {
+/* ── Container ───────────────────────────── */
+.modal-container {
     background-color: #0e1220;
     border: 1px solid #1a2035;
     border-radius: 20px;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
     display: flex; flex-direction: column;
     width: 100%;
-  }
+}
 
-  /* ── Header / Footer ─────────────────────── */
-  .modal-hdr {
+/* ── Header / Footer ─────────────────────── */
+.modal-hdr {
     display: flex; align-items: center;
     justify-content: space-between;
     padding: 20px 24px;
     border-bottom: 1px solid #1a2035;
     flex-shrink: 0;
-  }
-  .modal-ftr {
+}
+
+.modal-ftr {
     display: flex; align-items: center;
     justify-content: space-between;
     padding: 16px 24px;
     border-top: 1px solid #1a2035;
     flex-shrink: 0;
-  }
+}
 
-  /* ── Close Button ────────────────────────── */
-  .modal-close {
+/* ── Close Button ────────────────────────── */
+.modal-close {
     width: 32px; height: 32px;
     display: flex; align-items: center; justify-content: center;
     border: none; background: none; cursor: pointer;
     border-radius: 8px; color: var(--clr-text-subtle);
     transition: background-color 0.15s, color 0.15s;
-  }
-  .modal-close:hover { background-color: #1a2035; color: #93afd4; }
+}
+.modal-close:hover { background-color: #1a2035; color: #93afd4; }
 
-  /* ── Buttons ─────────────────────────────── */
-  .btn-primary {
+/* ── Buttons ─────────────────────────────── */
+.btn-primary {
     padding: 10px 24px; border: none; border-radius: 10px;
-    background-color: #3b5bdb; color: #fff; font-weight: 600;
+    background-color: #3b5bdb; color: #fff; font-size: 16px; font-weight: 600;
     cursor: pointer; box-shadow: 0 4px 16px rgba(59, 91, 219, 0.2);
     transition: background-color 0.15s;
-  }
-  .btn-primary:hover:not(:disabled) { background-color: #4c6ef5; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.btn-primary:hover:not(:disabled) { background-color: #4c6ef5; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .btn-secondary {
+.btn-secondary {
     padding: 10px 20px; border-radius: 10px;
-    border: 1px solid #1a2035; background-color: #131c30;
-    color: #93afd4; cursor: pointer;
+    border: 1px solid #1a2035; background: none;
+    color: #93afd4; font-size: 16px; cursor: pointer;
     transition: background-color 0.15s;
-  }
-  .btn-secondary:hover { background-color: #1a2035; }
+}
+.btn-secondary:hover { background-color: #1a2035; }
 
-  .btn-danger {
+.btn-danger {
     padding: 8px 14px; border-radius: 8px;
     border: 1px solid rgba(239, 68, 68, 0.3);
     background-color: rgba(239, 68, 68, 0.1);
-    color: #f87171; cursor: pointer;
+    color: #f87171; font-size: 15px; cursor: pointer;
     transition: background-color 0.15s;
-  }
-  .btn-danger:hover { background-color: rgba(239, 68, 68, 0.18); }
+}
+.btn-danger:hover { background-color: rgba(239, 68, 68, 0.18); }
 
-  /* ── Messages ────────────────────────────── */
-  .msg-error {
+/* ── Messages ────────────────────────────── */
+.msg-error {
     padding: 10px 14px; border-radius: 8px;
     color: #f87171; background-color: rgba(248, 113, 113, 0.08);
     border: 1px solid rgba(248, 113, 113, 0.2);
     font-size: 15px;
-  }
-  .msg-success {
+}
+.msg-success {
     padding: 10px 14px; border-radius: 8px;
     color: #6ee7b7; background-color: rgba(52, 211, 153, 0.07);
     border: 1px solid rgba(52, 211, 153, 0.25);
     font-size: 15px;
-  }
+}
 
-  /* ── Input ───────────────────────────────── */
-  .ui-input {
+/* ── Input ───────────────────────────────── */
+.ui-input {
     width: 100%; padding: 10px 14px; border-radius: 10px;
     border: 1px solid #1a2035; background-color: #080b14;
     color: #e2e8f0; font-size: 15px; box-sizing: border-box;
     transition: border-color 0.15s;
-  }
-  .ui-input:focus { outline: none; border-color: rgba(59, 91, 219, 0.6); }
+}
+.ui-input:focus { outline: none; border-color: rgba(59, 91, 219, 0.6); }
 
-  /* ── State Box ───────────────────────────── */
-  .state-box {
+/* ── State Box ───────────────────────────── */
+.state-box {
     display: flex; align-items: center; justify-content: center;
     flex-direction: column;
     padding: 48px; border: 1px solid #1a2035; border-radius: 16px;
-  }
-  .state-box--error { border-color: rgba(239, 68, 68, 0.3); }
 }
+.state-box--error { border-color: rgba(239, 68, 68, 0.3); }
