@@ -94,12 +94,12 @@ const subjectActivities = [
       </div>
 
       <!-- 워크플로 스텝 -->
-      <div class="steps">
+      <div class="steps grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         <div
             v-for="step in steps"
             :key="step.num"
             class="step-card"
-            :class="{ 'step-card--wide': step.num === 5 }"
+            :class="{ 'lg:col-span-2': step.num === 5 }"
             :style="{ '--c': step.color, '--bg': step.bg, '--bd': step.border }"
             @click="emit('navigate', step.section)"
         >
@@ -337,12 +337,6 @@ const subjectActivities = [
 }
 
 /* ── 워크플로 스텝 ───────────────────────────────────────────── */
-.steps {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
 .step-card {
   display: flex;
   flex-direction: column;
@@ -356,10 +350,6 @@ const subjectActivities = [
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
-.step-card--wide {
-  grid-column: 1 / -1;
-}
-
 .step-card:hover {
   border-color: var(--c);
   box-shadow: 0 4px 24px color-mix(in srgb, var(--c) 18%, transparent);
@@ -370,8 +360,6 @@ const subjectActivities = [
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: nowrap;
-  overflow: hidden;
 }
 
 .step-num {
@@ -398,9 +386,6 @@ const subjectActivities = [
   font-size: 20px;
   font-weight: 700;
   color: #eef2f8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   flex: 1;
 }
 
@@ -849,4 +834,5 @@ const subjectActivities = [
 .usecase-tip--subject strong {
   color: #fcd37a;
 }
+
 </style>
