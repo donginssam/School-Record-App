@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS Snapshot
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_snapshot_created_at ON Snapshot (created_at);
+
 -- ================================================================
 -- 치환 규칙
 -- ================================================================
