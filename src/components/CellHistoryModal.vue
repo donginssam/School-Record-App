@@ -125,7 +125,7 @@ async function saveManualSnapshot() {
           <div class="note-form">
             <input
               v-model="noteInput"
-              class="note-input"
+              class="ui-input note-input"
               placeholder="메모를 입력하세요 (필수)"
               maxlength="100"
               @keydown.enter="saveManualSnapshot"
@@ -271,15 +271,12 @@ async function saveManualSnapshot() {
 
 .note-input {
   flex: 1;
+  width: auto;
   padding: 7px 12px;
   border-radius: 8px;
-  border: 1px solid #2a3a60;
-  background: #080b14;
-  color: #e2e8f0;
+  border-color: #2a3a60;
   font-size: 13px;
-  outline: none;
 }
-.note-input:focus { border-color: rgba(59, 91, 219, 0.6); }
 
 .btn-confirm {
   padding: 7px 14px;

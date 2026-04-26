@@ -252,20 +252,6 @@ async function handleStudentSaved(studentIds) {
   background-color: #4c6ef5;
 }
 
-/* 상태 박스 */
-.state-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48px;
-  border: 1px solid #1a2035;
-  border-radius: 16px;
-}
-
-.state-box--error {
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
 .state-text {
   font-size: 16px;
   color: #7ba3d4;

@@ -248,8 +248,8 @@ async function doImport() {
 </script>
 
 <template>
-  <div class="overlay">
-    <div class="modal">
+  <div class="modal-overlay">
+    <div class="modal modal-container">
 
       <!-- 항상 DOM에 존재하는 숨김 파일 입력 -->
       <input
@@ -261,9 +261,9 @@ async function doImport() {
       />
 
       <!-- 헤더 -->
-      <div class="modal-header">
+      <div class="modal-hdr">
         <h2 class="modal-title">학생 일괄 추가</h2>
-        <button class="close-btn" @click="emit('close')">
+        <button class="modal-close" @click="emit('close')">
           <X :size="18"/>
         </button>
       </div>
@@ -380,13 +380,13 @@ async function doImport() {
         </div>
 
         <!-- 오류 -->
-        <div v-if="parseError" class="alert alert--error">
+        <div v-if="parseError" class="msg-error alert">
           <AlertCircle :size="15"/>
           {{ parseError }}
         </div>
 
         <!-- 가져오기 결과 -->
-        <div v-if="importResult" class="alert alert--success">
+        <div v-if="importResult" class="msg-success alert">
           <CheckCircle2 :size="15"/>
           <template v-if="importResult.inserted > 0 && importResult.updated > 0">
             {{ importResult.inserted }}명 추가, {{ importResult.updated }}명 업데이트됨.
@@ -402,10 +402,10 @@ async function doImport() {
       </div>
 
       <!-- 푸터 -->
-      <div class="modal-footer">
-        <button class="btn-cancel" @click="emit('close')">닫기</button>
+      <div class="modal-ftr modal-footer">
+        <button class="btn-secondary" @click="emit('close')">닫기</button>
         <button
-            class="btn-import"
+            class="btn-primary btn-import"
             :disabled="!allMapped || validRows.length === 0 || importing || !!importResult"
             @click="doImport"
         >
@@ -418,36 +418,10 @@ async function doImport() {
 </template>
 
 <style scoped>
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(4, 6, 12, 0.75);
-  backdrop-filter: blur(6px);
-}
-
 .modal {
-  width: 100%;
   max-width: 860px;
   max-height: 85vh;
-  background-color: #0e1220;
-  border: 1px solid #1a2035;
-  border-radius: 20px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px 0;
-  flex-shrink: 0;
 }
 
 .modal-title {
@@ -455,25 +429,6 @@ async function doImport() {
   font-weight: 700;
   color: #e2e8f0;
   margin: 0;
-}
-
-.close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: none;
-  border: none;
-  color: var(--clr-text-subtle);
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.close-btn:hover {
-  background-color: #1a2035;
-  color: #93afd4;
 }
 
 .modal-body {
@@ -774,82 +729,30 @@ async function doImport() {
   color: var(--clr-text-subtle);
 }
 
-/* 알림 */
+/* 알림 — layout override (색상은 전역 .msg-error / .msg-success 사용) */
 .alert {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
   border-radius: 10px;
-  font-size: 15px;
-}
-
-.alert--error {
-  background-color: rgba(239, 68, 68, 0.07);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-}
-
-.alert--success {
-  background-color: rgba(52, 211, 153, 0.07);
-  border: 1px solid rgba(52, 211, 153, 0.25);
-  color: #6ee7b7;
-}
-
-.skip-hint {
-  color: var(--clr-text-subtle);
-  font-size: 14px;
 }
 
 /* 푸터 */
 .modal-footer {
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
+  padding-bottom: 20px;
   gap: 8px;
-  padding: 16px 24px 20px;
-  border-top: 1px solid #1a2035;
-  flex-shrink: 0;
-}
-
-.btn-cancel {
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: 1px solid #1a2035;
-  background: none;
-  color: #7ba3d4;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.btn-cancel:hover {
-  background-color: #1a2035;
 }
 
 .btn-import {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 10px 24px;
-  border-radius: 10px;
-  border: none;
-  background-color: #3b5bdb;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s;
-  box-shadow: 0 4px 16px rgba(59, 91, 219, 0.2);
-}
-
-.btn-import:hover:not(:disabled) {
-  background-color: #4c6ef5;
 }
 
 .btn-import:disabled {
   opacity: 0.4;
-  cursor: not-allowed;
   box-shadow: none;
 }
 </style>

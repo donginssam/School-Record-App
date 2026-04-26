@@ -90,16 +90,16 @@ function submit() {
 </script>
 
 <template>
-  <div class="overlay">
-    <div class="modal">
+  <div class="modal-overlay">
+    <div class="modal modal-container">
 
       <!-- 헤더 -->
-      <div class="modal-header">
+      <div class="modal-hdr modal-header">
         <div class="header-text">
           <span class="area-label">{{ area.name }}</span>
           <h2 class="modal-title">학생 배정</h2>
         </div>
-        <button class="close-btn" @click="emit('close')">
+        <button class="modal-close" @click="emit('close')">
           <X :size="18"/>
         </button>
       </div>
@@ -159,12 +159,12 @@ function submit() {
       </div>
 
       <!-- 푸터 -->
-      <div class="modal-footer">
+      <div class="modal-ftr modal-footer">
         <span class="selected-count">{{ selectedIds.size }}명 선택됨</span>
         <div class="footer-right">
           <p v-if="serverError" class="server-error">{{ serverError }}</p>
-          <button class="btn-cancel" @click="emit('close')">취소</button>
-          <button class="btn-submit" @click="submit">저장</button>
+          <button class="btn-secondary" @click="emit('close')">취소</button>
+          <button class="btn-primary" @click="submit">저장</button>
         </div>
       </div>
     </div>
@@ -172,37 +172,15 @@ function submit() {
 </template>
 
 <style scoped>
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(4, 6, 12, 0.75);
-  backdrop-filter: blur(6px);
-}
-
 .modal {
-  width: 100%;
   max-width: 480px;
   max-height: 80vh;
-  background-color: #0e1220;
-  border: 1px solid #1a2035;
-  border-radius: 20px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
 
 .modal-header {
-  display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid #1a2035;
-  flex-shrink: 0;
+  padding-bottom: 16px;
 }
 
 .header-text {
@@ -222,26 +200,6 @@ function submit() {
   font-weight: 700;
   color: #e2e8f0;
   margin: 0;
-}
-
-.close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: none;
-  border: none;
-  color: var(--clr-text-subtle);
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-  flex-shrink: 0;
-}
-
-.close-btn:hover {
-  background-color: #1a2035;
-  color: #93afd4;
 }
 
 .modal-body {
@@ -366,12 +324,7 @@ function submit() {
 
 /* 푸터 */
 .modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 14px 24px 18px;
-  border-top: 1px solid #1a2035;
-  flex-shrink: 0;
 }
 
 .selected-count {
@@ -390,35 +343,4 @@ function submit() {
   margin: 0 12px 0 0;
 }
 
-.btn-cancel {
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: 1px solid #1a2035;
-  background: none;
-  color: #7ba3d4;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.btn-cancel:hover {
-  background-color: #1a2035;
-}
-
-.btn-submit {
-  padding: 10px 24px;
-  border-radius: 10px;
-  border: none;
-  background-color: #3b5bdb;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s;
-  box-shadow: 0 4px 16px rgba(59, 91, 219, 0.2);
-}
-
-.btn-submit:hover {
-  background-color: #4c6ef5;
-}
 </style>

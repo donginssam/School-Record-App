@@ -77,13 +77,13 @@ function handleDelete() {
 </script>
 
 <template>
-  <div class="overlay">
-    <div class="modal">
+  <div class="modal-overlay">
+    <div class="modal modal-container">
 
       <!-- 헤더 -->
-      <div class="modal-header">
+      <div class="modal-hdr">
         <h2 class="modal-title">{{ mode === 'add' ? '학생 추가' : '학생 수정' }}</h2>
-        <button class="close-btn" @click="emit('close')">
+        <button class="modal-close" @click="emit('close')">
           <X :size="18"/>
         </button>
       </div>
@@ -96,7 +96,7 @@ function handleDelete() {
             <label class="field-label">학년 <span class="required">*</span></label>
             <input
                 v-model="grade"
-                class="field-input"
+                class="ui-input field-input"
                 type="number"
                 min="1"
                 placeholder="3"
@@ -107,7 +107,7 @@ function handleDelete() {
             <label class="field-label">반 <span class="required">*</span></label>
             <input
                 v-model="classNum"
-                class="field-input"
+                class="ui-input field-input"
                 type="number"
                 min="1"
                 placeholder="2"
@@ -118,7 +118,7 @@ function handleDelete() {
             <label class="field-label">번호 <span class="required">*</span></label>
             <input
                 v-model="number"
-                class="field-input"
+                class="ui-input field-input"
                 type="number"
                 min="1"
                 placeholder="15"
@@ -131,7 +131,7 @@ function handleDelete() {
           <label class="field-label">이름 <span class="required">*</span></label>
           <input
               v-model="name"
-              class="field-input"
+              class="ui-input field-input"
               placeholder="홍길동"
               @keydown.enter="submit"
           />
@@ -148,27 +148,27 @@ function handleDelete() {
           </p>
         </div>
 
-        <p v-if="error" class="form-error">{{ error }}</p>
+        <p v-if="error" class="msg-error">{{ error }}</p>
       </div>
 
       <!-- 푸터 -->
-      <div class="modal-footer">
+      <div class="modal-ftr modal-footer">
         <div class="footer-left">
           <template v-if="mode === 'edit'">
-            <button v-if="!confirmDelete" class="btn-delete" @click="handleDelete">
+            <button v-if="!confirmDelete" class="btn-danger btn-delete" @click="handleDelete">
               <Trash2 :size="15"/>
               삭제
             </button>
             <div v-else class="confirm-row">
-              <button class="btn-cancel-sm" @click="confirmDelete = false">취소</button>
+              <button class="btn-secondary btn-cancel-sm" @click="confirmDelete = false">취소</button>
               <button class="btn-delete-confirm" @click="handleDelete">영구 삭제</button>
             </div>
           </template>
         </div>
 
         <div class="footer-right">
-          <button class="btn-cancel" @click="emit('close')">취소</button>
-          <button class="btn-submit" :disabled="submitting" @click="submit">
+          <button class="btn-secondary" @click="emit('close')">취소</button>
+          <button class="btn-primary" :disabled="submitting" @click="submit">
             {{ mode === 'add' ? '추가' : '저장' }}
           </button>
         </div>
@@ -178,32 +178,9 @@ function handleDelete() {
 </template>
 
 <style scoped>
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(4, 6, 12, 0.75);
-  backdrop-filter: blur(6px);
-}
-
 .modal {
-  width: 100%;
   max-width: 460px;
-  background-color: #0e1220;
-  border: 1px solid #1a2035;
-  border-radius: 20px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
   overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px 0;
 }
 
 .modal-title {
@@ -211,25 +188,6 @@ function handleDelete() {
   font-weight: 700;
   color: #e2e8f0;
   margin: 0;
-}
-
-.close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: none;
-  border: none;
-  color: var(--clr-text-subtle);
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.close-btn:hover {
-  background-color: #1a2035;
-  color: #93afd4;
 }
 
 .modal-body {
@@ -264,23 +222,6 @@ function handleDelete() {
 
 .required {
   color: #f87171;
-}
-
-.field-input {
-  width: 100%;
-  padding: 10px 14px;
-  font-size: 16px;
-  background-color: #080b14;
-  border: 1px solid #1a2035;
-  border-radius: 10px;
-  color: #e2e8f0;
-  outline: none;
-  transition: border-color 0.15s;
-  box-sizing: border-box;
-}
-
-.field-input:focus {
-  border-color: rgba(59, 91, 219, 0.6);
 }
 
 .field-input::placeholder {
@@ -327,23 +268,9 @@ function handleDelete() {
   font-weight: 600;
 }
 
-.form-error {
-  font-size: 15px;
-  color: #f87171;
-  background-color: rgba(248, 113, 113, 0.08);
-  border: 1px solid rgba(248, 113, 113, 0.2);
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin: 0;
-}
-
 /* 푸터 */
 .modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px 20px;
-  border-top: 1px solid #1a2035;
+  padding-bottom: 20px;
   margin-top: 8px;
 }
 
@@ -358,18 +285,6 @@ function handleDelete() {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  background: none;
-  color: #f87171;
-  font-size: 15px;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.btn-delete:hover {
-  background-color: rgba(239, 68, 68, 0.08);
 }
 
 .confirm-row {
@@ -380,11 +295,7 @@ function handleDelete() {
 .btn-cancel-sm {
   padding: 8px 14px;
   border-radius: 8px;
-  border: 1px solid #1a2035;
-  background: none;
-  color: #7ba3d4;
   font-size: 15px;
-  cursor: pointer;
 }
 
 .btn-delete-confirm {
@@ -401,37 +312,5 @@ function handleDelete() {
 
 .btn-delete-confirm:hover {
   background-color: #dc2626;
-}
-
-.btn-cancel {
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: 1px solid #1a2035;
-  background: none;
-  color: #7ba3d4;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.btn-cancel:hover {
-  background-color: #1a2035;
-}
-
-.btn-submit {
-  padding: 10px 24px;
-  border-radius: 10px;
-  border: none;
-  background-color: #3b5bdb;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s;
-  box-shadow: 0 4px 16px rgba(59, 91, 219, 0.2);
-}
-
-.btn-submit:hover {
-  background-color: #4c6ef5;
 }
 </style>
