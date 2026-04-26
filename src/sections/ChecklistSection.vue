@@ -339,8 +339,8 @@ async function doExport() {
         <h3 class="step-title">Step 1. 영역(Area) 선택</h3>
         <p class="step-desc">체크리스트를 만들 영역을 선택하세요.</p>
 
-        <p v-if="exportError && areas.length === 0" class="error-text">{{ exportError }}</p>
-        <p v-else-if="areas.length === 0" class="empty-hint">등록된 영역이 없습니다.</p>
+        <p v-if="exportError && areaStore.areas.length === 0" class="error-text">{{ exportError }}</p>
+        <p v-else-if="areaStore.areas.length === 0" class="empty-hint">등록된 영역이 없습니다.</p>
 
         <div v-else class="area-cards">
           <div
