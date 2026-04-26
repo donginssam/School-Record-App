@@ -66,10 +66,7 @@ fn migrate(conn: &mut Connection, from: u32) -> Result<()> {
 
     // 트랜잭션이 모두 닫힌 후 복구 — 열린 트랜잭션이 없으므로 PRAGMA가 반드시 적용됨
     // 복구 실패 시 conn이 foreign_keys = OFF 상태로 남으므로 에러로 처리
-    let fk_result = conn.execute_batch("PRAGMA foreign_keys = ON;").map_err(|e| {
-        eprintln!("foreign_keys 복구 실패: {e}");
-        e
-    });
+    let fk_result = conn.execute_batch("PRAGMA foreign_keys = ON;");
 
     // 마이그레이션 에러 우선, 복구 에러는 마이그레이션 성공 시에만 반환
     result.and(fk_result)
