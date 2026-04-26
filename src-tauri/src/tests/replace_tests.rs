@@ -202,6 +202,28 @@ fn test_preview_replace_with_regex() {
     assert_eq!(result, "줄바꿈 테스트");
 }
 
+// ── CHECK 제약 검증 ────────────────────────────────────────────
+
+#[test]
+fn test_create_replace_rule_negative_priority_insert_or_ignore_behavior() {
+    // INSERT OR IGNORE: CHECK 위반 → 삽입 무시 → changes()==0 → "이미 동일한 규칙" 에러 반환
+    let conn = setup_test_db();
+    let err = create_replace_rule_db(&conn, "a", "b", false, -1).unwrap_err();
+    assert!(
+        err.contains("이미 동일한 규칙"),
+        "INSERT OR IGNORE로 CHECK 위반이 무시되어 changes()==0 에러가 반환되어야 함: {err}"
+    );
+}
+
+#[test]
+fn test_update_replace_rule_negative_priority_violates_check() {
+    // UPDATE: OR IGNORE 없음 → CHECK 위반 직접 전파
+    let conn = setup_test_db();
+    let rule = create_replace_rule_db(&conn, "a", "b", false, 0).unwrap();
+    let err = update_replace_rule_db(&conn, rule.id, "a", "b", false, true, -1).unwrap_err();
+    assert!(err.contains("CHECK constraint failed"), "priority=-1 UPDATE CHECK 위반이어야 함: {err}");
+}
+
 #[test]
 fn test_seed_default_rules_skips_when_nonempty() {
     let conn = setup_test_db();

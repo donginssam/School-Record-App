@@ -209,13 +209,12 @@ pub fn save_snapshot_internal(
     if inserted == 0 {
         conn.execute(
             "UPDATE ActivityRecordHistory SET note = ?3
-             WHERE activity_record_id = (
-                 SELECT r.id FROM ActivityRecord r
+             WHERE id = (
+                 SELECT h.id FROM ActivityRecordHistory h
+                 JOIN ActivityRecord r ON r.id = h.activity_record_id
                  WHERE r.activity_id = ?1 AND r.student_id = ?2
-             )
-             AND changed_at = (
-                 SELECT r.updated_at FROM ActivityRecord r
-                 WHERE r.activity_id = ?1 AND r.student_id = ?2
+                   AND h.changed_at = r.updated_at
+                 LIMIT 1
              )",
             rusqlite::params![activity_id, student_id, note],
         )

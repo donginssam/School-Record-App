@@ -272,3 +272,34 @@ fn test_get_students_empty() {
     let students = get_students_impl(&conn).unwrap();
     assert!(students.is_empty());
 }
+
+// ── CHECK 제약 검증 ────────────────────────────────────────────
+
+#[test]
+fn test_create_student_grade_zero_violates_check() {
+    let conn = setup_test_db();
+    let err = create_student_impl(&conn, 0, 1, 1, "홍길동").unwrap_err();
+    assert!(err.contains("CHECK constraint failed"), "grade=0 CHECK 위반이어야 함: {err}");
+}
+
+#[test]
+fn test_create_student_class_num_zero_violates_check() {
+    let conn = setup_test_db();
+    let err = create_student_impl(&conn, 1, 0, 1, "홍길동").unwrap_err();
+    assert!(err.contains("CHECK constraint failed"), "class_num=0 CHECK 위반이어야 함: {err}");
+}
+
+#[test]
+fn test_create_student_number_zero_violates_check() {
+    let conn = setup_test_db();
+    let err = create_student_impl(&conn, 1, 1, 0, "홍길동").unwrap_err();
+    assert!(err.contains("CHECK constraint failed"), "number=0 CHECK 위반이어야 함: {err}");
+}
+
+#[test]
+fn test_update_student_negative_grade_violates_check() {
+    let conn = setup_test_db();
+    let id = create_student_impl(&conn, 1, 1, 1, "홍길동").unwrap();
+    let err = update_student_impl(&conn, id, -1, 1, 1, "홍길동").unwrap_err();
+    assert!(err.contains("CHECK constraint failed"), "grade=-1 CHECK 위반이어야 함: {err}");
+}

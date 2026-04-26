@@ -36,6 +36,7 @@ fn test_create_new_creates_required_tables() {
         "ReplaceRule",
         "SynonymGroup",
         "SynonymItem",
+        "APP_CONFIGS",
     ];
     for table in &required {
         assert!(table_exists(&conn, table), "테이블 없음: {table}");

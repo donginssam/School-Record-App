@@ -9,14 +9,15 @@ CREATE TABLE IF NOT EXISTS Student
     class_num INTEGER NOT NULL,
     number    INTEGER NOT NULL,
     name      TEXT    NOT NULL,
-    UNIQUE (grade, class_num, number)
+    UNIQUE (grade, class_num, number),
+    CHECK (grade >= 1 AND class_num >= 1 AND number >= 1)
 );
 
 CREATE TABLE IF NOT EXISTS Area
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT    NOT NULL UNIQUE,
-    byte_limit INTEGER NOT NULL
+    byte_limit INTEGER NOT NULL CHECK (byte_limit > 0)
 );
 
 CREATE TABLE IF NOT EXISTS Activity
@@ -106,7 +107,7 @@ CREATE TABLE IF NOT EXISTS ReplaceRule
     new_text   TEXT    NOT NULL,
     is_regex   INTEGER NOT NULL DEFAULT 0,
     enabled    INTEGER NOT NULL DEFAULT 1,
-    priority   INTEGER NOT NULL DEFAULT 0,
+    priority   INTEGER NOT NULL DEFAULT 0 CHECK (priority >= 0),
     created_at TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT    NOT NULL DEFAULT (datetime('now')),
     UNIQUE (old_text, new_text)

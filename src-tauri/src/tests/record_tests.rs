@@ -571,6 +571,37 @@ fn test_preview_import_empty_input_returns_empty() {
     assert!(items.is_empty());
 }
 
+// ── 트랜잭션 롤백 검증 ─────────────────────────────────────────
+
+#[test]
+fn test_bulk_import_rollback_on_fk_violation() {
+    let conn = setup_test_db();
+    let act_id = insert_activity(&conn, "발표");
+
+    // 첫 번째: 유효한 레코드 / 두 번째: 존재하지 않는 activity_id → FK 위반
+    let records = vec![
+        make_import(1, 1, 1, Some("홍길동"), act_id, "내용A"),
+        make_import(1, 1, 2, Some("김철수"), 9999, "내용B"),
+    ];
+
+    conn.execute_batch("BEGIN").unwrap();
+    let result = bulk_import_records_impl(&conn, &records);
+    match result {
+        Ok(_) => { conn.execute_batch("COMMIT").unwrap(); }
+        Err(_) => { let _ = conn.execute_batch("ROLLBACK"); }
+    }
+
+    let student_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM Student", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(student_count, 0, "FK 위반으로 전체 트랜잭션 롤백 시 Student도 0이어야 함");
+
+    let record_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM ActivityRecord", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(record_count, 0, "FK 위반으로 전체 트랜잭션 롤백 시 ActivityRecord도 0이어야 함");
+}
+
 #[test]
 fn test_bulk_import_same_student_multiple_activities_records_saved() {
     // test_bulk_import_student_cache_deduplication 은 Student COUNT만 검증하므로

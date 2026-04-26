@@ -107,6 +107,30 @@ fn test_delete_area_cascades_area_activity() {
     assert_eq!(count, 0);
 }
 
+// ── CHECK 제약 검증 ────────────────────────────────────────────
+
+#[test]
+fn test_create_area_byte_limit_zero_violates_check() {
+    let conn = setup_test_db();
+    let err = create_area_impl(&conn, "영역", 0).unwrap_err();
+    assert!(err.contains("CHECK constraint failed"), "byte_limit=0 CHECK 위반이어야 함: {err}");
+}
+
+#[test]
+fn test_create_area_negative_byte_limit_violates_check() {
+    let conn = setup_test_db();
+    let err = create_area_impl(&conn, "영역", -100).unwrap_err();
+    assert!(err.contains("CHECK constraint failed"), "byte_limit=-100 CHECK 위반이어야 함: {err}");
+}
+
+#[test]
+fn test_update_area_byte_limit_zero_violates_check() {
+    let conn = setup_test_db();
+    let id = create_area_impl(&conn, "영역", 500).unwrap();
+    let err = update_area_impl(&conn, id, "영역", 0).unwrap_err();
+    assert!(err.contains("CHECK constraint failed"), "update byte_limit=0 CHECK 위반이어야 함: {err}");
+}
+
 #[test]
 fn test_delete_area_cascades_area_student() {
     let conn = setup_test_db();

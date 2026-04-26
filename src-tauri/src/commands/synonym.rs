@@ -149,14 +149,14 @@ pub fn get_all_records_for_inspect_impl(
             }
             let placeholders = area_ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
             let sql = format!(
-                "SELECT ar.id, act.name, s.name, COALESCE(a.name, '') AS area_name,
+                "SELECT ar.id, act.name, s.name, a.name AS area_name,
                         s.grade, s.class_num, s.number, ar.content
-                 FROM ActivityRecord ar
-                 JOIN Activity act ON ar.activity_id = act.id
-                 JOIN Student s ON ar.student_id = s.id
-                 JOIN AreaActivity aa ON act.id = aa.activity_id
-                 JOIN Area a ON aa.area_id = a.id
-                 JOIN AreaStudent ast ON ar.student_id = ast.student_id AND ast.area_id = aa.area_id
+                 FROM AreaActivity aa
+                 JOIN Area a ON a.id = aa.area_id
+                 JOIN Activity act ON act.id = aa.activity_id
+                 JOIN ActivityRecord ar ON ar.activity_id = aa.activity_id
+                 JOIN Student s ON s.id = ar.student_id
+                 JOIN AreaStudent ast ON ast.student_id = ar.student_id AND ast.area_id = aa.area_id
                  WHERE ar.content != '' AND aa.area_id IN ({placeholders})
                  GROUP BY ar.id
                  ORDER BY a.id, act.id, s.grade, s.class_num, s.number"
