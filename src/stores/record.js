@@ -12,6 +12,7 @@ export const useRecordStore = defineStore('record', () => {
         error.value = ''
         try {
             gridData.value = await invoke('get_area_grid', {areaId})
+            return gridData.value
         } catch (e) {
             error.value = String(e)
             gridData.value = null
@@ -33,5 +34,27 @@ export const useRecordStore = defineStore('record', () => {
         await invoke('save_history_snapshot', {activityId, studentId, note})
     }
 
-    return {gridData, loading, error, fetchAreaGrid, upsertRecord, fetchRecordHistory, saveHistorySnapshot}
+    async function previewImportRecords(records) {
+        try {
+            return await invoke('preview_import_records', {records})
+        } catch (e) {
+            error.value = String(e)
+            throw e
+        }
+    }
+
+    async function bulkImportRecords(records) {
+        loading.value = true
+        error.value = ''
+        try {
+            return await invoke('bulk_import_records', {records})
+        } catch (e) {
+            error.value = String(e)
+            throw e
+        } finally {
+            loading.value = false
+        }
+    }
+
+    return {gridData, loading, error, fetchAreaGrid, upsertRecord, fetchRecordHistory, saveHistorySnapshot, previewImportRecords, bulkImportRecords}
 })

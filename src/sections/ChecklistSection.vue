@@ -1,10 +1,18 @@
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue'
-import {invoke} from '@tauri-apps/api/core'
 import {save} from '@tauri-apps/plugin-dialog'
+import {useAreaStore} from '../stores/area.js'
+import {useRecordStore} from '../stores/record.js'
+import {useFileStore} from '../stores/file.js'
 import {revealItemInDir} from '@tauri-apps/plugin-opener'
 import {ArrowLeft, ArrowRight} from 'lucide-vue-next'
 import {Workbook} from 'exceljs'
+
+// ── 스토어 ────────────────────────────────────────────────────
+
+const areaStore = useAreaStore()
+const recordStore = useRecordStore()
+const fileStore = useFileStore()
 
 // ── 상태 ──────────────────────────────────────────────────────
 
@@ -15,7 +23,6 @@ watch(step, () => {
   wizardBodyRef.value?.scrollTo({top: 0, behavior: 'smooth'})
 })
 
-const areas = ref([])
 const selectedAreaId = ref(null)
 const gridData = ref(null)
 const previewEnabled = ref(true)
@@ -30,7 +37,7 @@ const isNavigating = ref(false)
 
 onMounted(async () => {
   try {
-    areas.value = await invoke('get_areas')
+    await areaStore.fetchAreas()
   } catch (e) {
     exportError.value = `영역 목록을 불러오지 못했습니다: ${e}`
   }
@@ -38,7 +45,7 @@ onMounted(async () => {
 
 // ── Computed ──────────────────────────────────────────────────
 
-const selectedArea = computed(() => areas.value.find(a => a.id === selectedAreaId.value))
+const selectedArea = computed(() => areaStore.areas.find(a => a.id === selectedAreaId.value))
 
 const canGoNext = computed(() => {
   if (step.value === 1) return selectedAreaId.value !== null
@@ -72,7 +79,7 @@ async function goNext() {
   isNavigating.value = true
   try {
     if (step.value === 1) {
-      gridData.value = await invoke('get_area_grid', {areaId: selectedAreaId.value})
+      gridData.value = await recordStore.fetchAreaGrid(selectedAreaId.value)
       const {activities, students, records} = gridData.value
       previewRows.value = students.flatMap(student =>
           activities.map(activity => {
@@ -291,7 +298,7 @@ async function doExport() {
       return
     }
 
-    await invoke('write_bytes_file', {path: filePath, data})
+    await fileStore.writeBytesFile(filePath, data)
 
     exportResult.value = {
       fileName: filePath.split(/[\\/]/).pop(),
@@ -337,7 +344,7 @@ async function doExport() {
 
         <div v-else class="area-cards">
           <div
-              v-for="area in areas"
+              v-for="area in areaStore.areas"
               :key="area.id"
               class="area-card"
               :class="{ 'area-card--selected': selectedAreaId === area.id }"

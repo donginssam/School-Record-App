@@ -548,3 +548,51 @@ fn test_preview_activity_name_fallback() {
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].activity_name, format!("활동 #{}", fake_act_id));
 }
+
+// ── import 엣지 케이스 ─────────────────────────────────────────
+
+#[test]
+fn test_bulk_import_empty_input_returns_zeros() {
+    let conn = setup_test_db();
+
+    let result = bulk_import_records_impl(&conn, &[]).unwrap();
+
+    assert_eq!(result.students_created, 0);
+    assert_eq!(result.students_updated, 0);
+    assert_eq!(result.records_saved, 0);
+}
+
+#[test]
+fn test_preview_import_empty_input_returns_empty() {
+    let conn = setup_test_db();
+
+    let items = preview_import_records_impl(&conn, &[]).unwrap();
+
+    assert!(items.is_empty());
+}
+
+#[test]
+fn test_bulk_import_same_student_multiple_activities_records_saved() {
+    // test_bulk_import_student_cache_deduplication 은 Student COUNT만 검증하므로
+    // 이 테스트는 ActivityRecord 가 2개 모두 생성되는지를 추가 검증한다.
+    let conn = setup_test_db();
+    let act_id1 = insert_activity(&conn, "독서");
+    let act_id2 = insert_activity(&conn, "발표");
+
+    let result = bulk_import_records_impl(
+        &conn,
+        &[
+            make_import(1, 1, 1, Some("홍길동"), act_id1, "독서 내용"),
+            make_import(1, 1, 1, Some("홍길동"), act_id2, "발표 내용"),
+        ],
+    )
+    .unwrap();
+
+    assert_eq!(result.students_created, 1, "동일 학생은 한 번만 생성되어야 한다");
+    assert_eq!(result.records_saved, 2, "활동이 2개이므로 기록 2건이어야 한다");
+
+    let record_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM ActivityRecord", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(record_count, 2);
+}

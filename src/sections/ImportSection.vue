@@ -1,11 +1,19 @@
 <script setup>
 import {computed, ref, watch} from 'vue'
-import {invoke} from '@tauri-apps/api/core'
 import {save} from '@tauri-apps/plugin-dialog'
+import {useActivityStore} from '../stores/activity.js'
+import {useRecordStore} from '../stores/record.js'
+import {useFileStore} from '../stores/file.js'
 import {ArrowLeft, ArrowRight, Download, FileSpreadsheet} from 'lucide-vue-next'
 import DiffView from '../components/DiffView.vue'
 import {Workbook} from 'exceljs'
 import {SAMPLE_A_ROWS, SAMPLE_B_COLS, SAMPLE_B_ROWS} from '../data/sampleImportData'
+
+// ── 스토어 ────────────────────────────────────────────────────
+
+const activityStore = useActivityStore()
+const recordStore = useRecordStore()
+const fileStore = useFileStore()
 
 const COL_ALIASES = {
   grade: ['학년', 'grade'],
@@ -375,8 +383,8 @@ function goPrev() {
 
 async function loadDbActivities() {
   try {
-    const acts = await invoke('get_activities')
-    dbActivities.value = acts.map(a => ({id: a.id, name: a.name}))
+    await activityStore.fetchActivities()
+    dbActivities.value = activityStore.activities.map(a => ({id: a.id, name: a.name}))
   } catch (e) {
     importError.value = '활동 목록 로드 실패: ' + String(e)
   }
@@ -472,12 +480,12 @@ async function loadPreview() {
 
     let backendItems = []
     if (existingActRecords.length > 0) {
-      backendItems = await invoke('preview_import_records', {
-        records: existingActRecords.map(r => ({
-          grade: r.grade, class_num: r.class_num, number: r.number,
-          name: r.name, activity_id: r.activity_id, content: r.content,
-        }))
-      })
+      backendItems = await recordStore.previewImportRecords(
+          existingActRecords.map(r => ({
+            grade: r.grade, class_num: r.class_num, number: r.number,
+            name: r.name, activity_id: r.activity_id, content: r.content,
+          }))
+      )
     }
 
     const allItems = [
@@ -533,7 +541,7 @@ async function doImport() {
     const finalMap = {...activityMatchMap.value}
     for (const [name, id] of Object.entries(finalMap)) {
       if (id === 0) {
-        finalMap[name] = await invoke('create_activity', {name})
+        finalMap[name] = await activityStore.createActivity(name)
       }
     }
 
@@ -572,7 +580,7 @@ async function doImport() {
       return
     }
 
-    importResult.value = await invoke('bulk_import_records', {records})
+    importResult.value = await recordStore.bulkImportRecords(records)
     step.value++
   } catch (e) {
     importError.value = '가져오기 실패: ' + String(e)
@@ -601,7 +609,7 @@ async function downloadSampleA() {
   const buffer = await workbook.xlsx.writeBuffer()
   const data = bufferToBase64(buffer)
   try {
-    await invoke('write_bytes_file', {path: filePath, data})
+    await fileStore.writeBytesFile(filePath, data)
   } catch (e) {
     parseError.value = `파일 저장 실패: ${e}`
   }
@@ -624,7 +632,7 @@ async function downloadSampleB() {
   const buffer = await workbook.xlsx.writeBuffer()
   const data = bufferToBase64(buffer)
   try {
-    await invoke('write_bytes_file', {path: filePath, data})
+    await fileStore.writeBytesFile(filePath, data)
   } catch (e) {
     parseError.value = `파일 저장 실패: ${e}`
   }
