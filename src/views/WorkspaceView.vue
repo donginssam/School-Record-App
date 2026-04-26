@@ -44,8 +44,8 @@ onMounted(async () => {
     await win.setMinSize(new LogicalSize(900, 600))
     await win.setSize(new LogicalSize(1280, 720))
     await win.center()
-  } catch (e) {
-    console.warn('창 리사이즈 실패:', e)
+  } catch {
+    // 창 리사이즈 실패는 비치명적이므로 무시
   }
 })
 </script>
