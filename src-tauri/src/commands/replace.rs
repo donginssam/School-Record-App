@@ -84,7 +84,7 @@ pub fn update_replace_rule_db(
     conn.execute(
         "UPDATE ReplaceRule
          SET old_text=?1, new_text=?2, is_regex=?3, enabled=?4, priority=?5,
-             updated_at=datetime('now','localtime')
+             updated_at=datetime('now')
          WHERE id=?6",
         rusqlite::params![old_text, new_text, is_regex_int, enabled_int, priority, id],
     )

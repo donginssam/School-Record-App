@@ -107,8 +107,8 @@ CREATE TABLE IF NOT EXISTS ReplaceRule
     is_regex   INTEGER NOT NULL DEFAULT 0,
     enabled    INTEGER NOT NULL DEFAULT 1,
     priority   INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
-    updated_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now')),
     UNIQUE (old_text, new_text)
 );
 
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS SynonymGroup
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT    NOT NULL UNIQUE,
-    created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+    created_at TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS SynonymItem
