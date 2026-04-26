@@ -66,7 +66,7 @@ watch(() => props.currentStep, () => {
   justify-content: flex-end;
   gap: 8px;
   padding: 10px 40px;
-  border-bottom: 1px solid #1a2035;
+  border-bottom: 1px solid var(--clr-border);
   flex-shrink: 0;
 }
 
@@ -79,7 +79,7 @@ watch(() => props.currentStep, () => {
   border-radius: 50%;
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid #1a2035;
+  border: 1px solid var(--clr-border);
   color: var(--clr-text-hint);
   background: transparent;
   transition: all 0.2s;
@@ -108,7 +108,7 @@ watch(() => props.currentStep, () => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 40px;
-  border-top: 1px solid #1a2035;
+  border-top: 1px solid var(--clr-border);
   flex-shrink: 0;
 }
 

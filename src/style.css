@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
 :root {
+  --clr-bg-base:     #080b14;
+  --clr-bg-surface:  #0e1220;
+  --clr-bg-raised:   #131c30;
+  --clr-border:      #1a2035;
+  --clr-blue:        #3b5bdb;
+  --clr-blue-hover:  #4c6ef5;
+  --clr-red-bg:      rgba(239,68,68,0.1);
+  --clr-red-border:  rgba(239,68,68,0.25);
+  --clr-red-text:    #f87171;
+  --clr-text-main:   #e2e8f0;
+  --clr-text-sub:    #c8d8f0;
   --clr-text-hint:   #6b8ab5;
   --clr-text-subtle: #7c8db5;
 }
@@ -38,8 +49,8 @@
 
 /* ── Container ───────────────────────────── */
 .modal-container {
-    background-color: #0e1220;
-    border: 1px solid #1a2035;
+    background-color: var(--clr-bg-surface);
+    border: 1px solid var(--clr-border);
     border-radius: 20px;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
     display: flex; flex-direction: column;
@@ -52,7 +63,7 @@
     display: flex; align-items: center;
     justify-content: space-between;
     padding: 20px 24px;
-    border-bottom: 1px solid #1a2035;
+    border-bottom: 1px solid var(--clr-border);
     flex-shrink: 0;
 }
 
@@ -60,7 +71,7 @@
     display: flex; align-items: center;
     justify-content: space-between;
     padding: 16px 24px;
-    border-top: 1px solid #1a2035;
+    border-top: 1px solid var(--clr-border);
     flex-shrink: 0;
 }
 
@@ -71,7 +82,7 @@
 .modal-title {
     font-size: 18px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: var(--clr-text-main);
     margin: 0;
 }
 
@@ -83,31 +94,31 @@
     border-radius: 8px; color: var(--clr-text-subtle);
     transition: background-color 0.15s, color 0.15s;
 }
-.modal-close:hover { background-color: #1a2035; color: #93afd4; }
+.modal-close:hover { background-color: var(--clr-border); color: #93afd4; }
 
 /* ── Buttons ─────────────────────────────── */
 .btn-primary {
     padding: 10px 24px; border: none; border-radius: 10px;
-    background-color: #3b5bdb; color: #fff; font-size: 16px; font-weight: 600;
+    background-color: var(--clr-blue); color: #fff; font-size: 16px; font-weight: 600;
     cursor: pointer; box-shadow: 0 4px 16px rgba(59, 91, 219, 0.2);
     transition: background-color 0.15s;
 }
-.btn-primary:hover:not(:disabled) { background-color: #4c6ef5; }
+.btn-primary:hover:not(:disabled) { background-color: var(--clr-blue-hover); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-secondary {
     padding: 10px 20px; border-radius: 10px;
-    border: 1px solid #1a2035; background: none;
+    border: 1px solid var(--clr-border); background: none;
     color: #93afd4; font-size: 16px; cursor: pointer;
     transition: background-color 0.15s;
 }
-.btn-secondary:hover { background-color: #1a2035; }
+.btn-secondary:hover { background-color: var(--clr-border); }
 
 .btn-danger {
     padding: 8px 14px; border-radius: 8px;
     border: 1px solid rgba(239, 68, 68, 0.3);
-    background-color: rgba(239, 68, 68, 0.1);
-    color: #f87171; font-size: 15px; cursor: pointer;
+    background-color: var(--clr-red-bg);
+    color: var(--clr-red-text); font-size: 15px; cursor: pointer;
     transition: background-color 0.15s;
 }
 .btn-danger:hover { background-color: rgba(239, 68, 68, 0.18); }
@@ -115,7 +126,7 @@
 /* ── Messages ────────────────────────────── */
 .msg-error {
     padding: 10px 14px; border-radius: 8px;
-    color: #f87171; background-color: rgba(248, 113, 113, 0.08);
+    color: var(--clr-red-text); background-color: rgba(248, 113, 113, 0.08);
     border: 1px solid rgba(248, 113, 113, 0.2);
     font-size: 15px;
 }
@@ -129,8 +140,8 @@
 /* ── Input ───────────────────────────────── */
 .ui-input {
     width: 100%; padding: 10px 14px; border-radius: 10px;
-    border: 1px solid #1a2035; background-color: #080b14;
-    color: #e2e8f0; font-size: 15px; box-sizing: border-box;
+    border: 1px solid var(--clr-border); background-color: var(--clr-bg-base);
+    color: var(--clr-text-main); font-size: 15px; box-sizing: border-box;
     transition: border-color 0.15s;
 }
 .ui-input:focus { outline: none; border-color: rgba(59, 91, 219, 0.6); }
@@ -139,7 +150,7 @@
 .state-box {
     display: flex; align-items: center; justify-content: center;
     flex-direction: column;
-    padding: 48px; border: 1px solid #1a2035; border-radius: 16px;
+    padding: 48px; border: 1px solid var(--clr-border); border-radius: 16px;
 }
 .state-box--error { border-color: rgba(239, 68, 68, 0.3); }
 
