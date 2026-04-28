@@ -86,19 +86,19 @@ jobs:
 
       - name: zip installer artifact (Windows only)
         if: matrix.platform == 'windows-latest'
-        shell: bash
+        shell: pwsh
         run: |
-          VERSION=${{ steps.version.outputs.VERSION }}
-          FILENAME="school-record-app-${VERSION}-${{ matrix.artifact_name }}-setup.exe"
-          zip "${FILENAME%.exe}.zip" "$FILENAME"
+          $VERSION = "${{ steps.version.outputs.VERSION }}"
+          $FILENAME = "school-record-app-${VERSION}-${{ matrix.artifact_name }}-setup.exe"
+          Compress-Archive -Path $FILENAME -DestinationPath ($FILENAME -replace '\.exe$', '.zip')
 
       - name: zip portable artifact (Windows only)
         if: matrix.platform == 'windows-latest'
-        shell: bash
+        shell: pwsh
         run: |
-          VERSION=${{ steps.version.outputs.VERSION }}
-          FILENAME="school-record-app-${VERSION}-windows-x64-portable.exe"
-          zip "${FILENAME%.exe}.zip" "$FILENAME"
+          $VERSION = "${{ steps.version.outputs.VERSION }}"
+          $FILENAME = "school-record-app-${VERSION}-windows-x64-portable.exe"
+          Compress-Archive -Path $FILENAME -DestinationPath ($FILENAME -replace '\.exe$', '.zip')
 
       - name: upload installer artifact (macOS)
         if: matrix.platform == 'macos-latest'
