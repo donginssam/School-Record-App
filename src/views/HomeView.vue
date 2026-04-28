@@ -65,7 +65,7 @@ async function checkUpdate() {
     latestVersion.value = data.tag_name
     releaseUrl.value = data.html_url
     const tag = data.tag_name.replace(/^v/, '')
-    updateStatus.value = tag !== currentVersion.value ? 'found' : 'latest'
+    updateStatus.value = tag !== currentVersion.value?.replace(/^v/, '') ? 'found' : 'latest'
   } catch {
     updateStatus.value = 'error'
   }
