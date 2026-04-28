@@ -74,7 +74,7 @@ jobs:
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
           SRC=$(ls "${{ matrix.bundle_path }}"/*.${{ matrix.artifact_ext }} | head -1)
-          cp "$SRC" "school-record-app-v${VERSION}-${{ matrix.artifact_name }}-setup.${{ matrix.artifact_ext }}"
+          cp "$SRC" "school-record-app-${VERSION}-${{ matrix.artifact_name }}-setup.${{ matrix.artifact_ext }}"
 
       - name: rename portable artifact (Windows only)
         if: matrix.platform == 'windows-latest'
@@ -82,14 +82,14 @@ jobs:
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
           cp "src-tauri/target/release/school-record-app.exe" \
-             "school-record-app-v${VERSION}-windows-x64-portable.exe"
+             "school-record-app-${VERSION}-windows-x64-portable.exe"
 
       - name: zip installer artifact (Windows only)
         if: matrix.platform == 'windows-latest'
         shell: bash
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          FILENAME="school-record-app-v${VERSION}-${{ matrix.artifact_name }}-setup.exe"
+          FILENAME="school-record-app-${VERSION}-${{ matrix.artifact_name }}-setup.exe"
           zip "${FILENAME%.exe}.zip" "$FILENAME"
 
       - name: zip portable artifact (Windows only)
@@ -97,7 +97,7 @@ jobs:
         shell: bash
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          FILENAME="school-record-app-v${VERSION}-windows-x64-portable.exe"
+          FILENAME="school-record-app-${VERSION}-windows-x64-portable.exe"
           zip "${FILENAME%.exe}.zip" "$FILENAME"
 
       - name: upload installer artifact (macOS)
@@ -105,21 +105,21 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}-setup
-          path: school-record-app-v${{ steps.version.outputs.VERSION }}-${{ matrix.artifact_name }}-setup.dmg
+          path: school-record-app-${{ steps.version.outputs.VERSION }}-${{ matrix.artifact_name }}-setup.dmg
 
       - name: upload installer artifact (Windows)
         if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}-setup
-          path: school-record-app-v${{ steps.version.outputs.VERSION }}-${{ matrix.artifact_name }}-setup.zip
+          path: school-record-app-${{ steps.version.outputs.VERSION }}-${{ matrix.artifact_name }}-setup.zip
 
       - name: upload portable artifact (Windows only)
         if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: windows-x64-portable
-          path: school-record-app-v${{ steps.version.outputs.VERSION }}-windows-x64-portable.zip
+          path: school-record-app-${{ steps.version.outputs.VERSION }}-windows-x64-portable.zip
 
   release:
     needs: build
