@@ -145,8 +145,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          gh release create "$VERSION" \
+            --title "$VERSION" \
             --notes "See the assets to download this version and install." \
             --draft \
             artifacts/*
