@@ -84,18 +84,42 @@ jobs:
           cp "src-tauri/target/release/school-record-app.exe" \
              "school-record-app-v${VERSION}-windows-x64-portable.exe"
 
-      - name: upload installer artifact
+      - name: zip installer artifact (Windows only)
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          FILENAME="school-record-app-v${VERSION}-${{ matrix.artifact_name }}-setup.exe"
+          zip "${FILENAME%.exe}.zip" "$FILENAME"
+
+      - name: zip portable artifact (Windows only)
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          FILENAME="school-record-app-v${VERSION}-windows-x64-portable.exe"
+          zip "${FILENAME%.exe}.zip" "$FILENAME"
+
+      - name: upload installer artifact (macOS)
+        if: matrix.platform == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}-setup
-          path: school-record-app-v${{ steps.version.outputs.VERSION }}-${{ matrix.artifact_name }}-setup.${{ matrix.artifact_ext }}
+          path: school-record-app-v${{ steps.version.outputs.VERSION }}-${{ matrix.artifact_name }}-setup.dmg
+
+      - name: upload installer artifact (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-setup
+          path: school-record-app-v${{ steps.version.outputs.VERSION }}-${{ matrix.artifact_name }}-setup.zip
 
       - name: upload portable artifact (Windows only)
         if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: windows-x64-portable
-          path: school-record-app-v${{ steps.version.outputs.VERSION }}-windows-x64-portable.exe
+          path: school-record-app-v${{ steps.version.outputs.VERSION }}-windows-x64-portable.zip
 
   release:
     needs: build
@@ -121,8 +145,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ steps.version.outputs.VERSION }}" \
-            --title "v${{ steps.version.outputs.VERSION }}" \
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
             --notes "See the assets to download this version and install." \
             --draft \
             artifacts/*
