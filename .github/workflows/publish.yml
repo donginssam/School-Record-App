@@ -60,7 +60,9 @@ jobs:
       - name: get version
         id: version
         shell: bash
-        run: echo "VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=$(node -p 'require("./src-tauri/tauri.conf.json").version')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: rename installer artifact
         shell: bash
@@ -100,7 +102,9 @@ jobs:
 
       - name: get version
         id: version
-        run: echo "VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=$(node -p 'require("./src-tauri/tauri.conf.json").version')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: download all artifacts
         uses: actions/download-artifact@v4
