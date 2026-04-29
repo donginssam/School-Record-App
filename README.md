@@ -125,11 +125,8 @@ npm run tauri:windows:portable
 # 설치 파일 (NSIS) 빌드
 npm run tauri:windows:installer
 
-# MacOS ARM
-npm run tauri:macos:arm
-
-# MacOS Intel CPU
-npm run tauri:macos:intel
+# MacOS 빌드
+npm run tauri:macos
 ```
 
 ---
