@@ -38,9 +38,5 @@ export const useStudentStore = defineStore('student', () => {
         return await invoke('bulk_upsert_students', {students})
     }
 
-    async function writeSampleFile(path, content) {
-        await invoke('write_text_file', {path, content})
-    }
-
-    return {students, loading, error, fetchStudents, createStudent, updateStudent, deleteStudent, bulkUpsertStudents, writeSampleFile}
+    return {students, loading, error, fetchStudents, createStudent, updateStudent, deleteStudent, bulkUpsertStudents}
 })
