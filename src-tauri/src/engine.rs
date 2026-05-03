@@ -3,10 +3,40 @@ use rusqlite::Connection;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::path::{Component, Path};
 
 use crate::crypto::maybe_decrypt;
 use crate::state::ReplaceCache;
 use crate::types::{RecordCell, ReplaceRule};
+
+fn validate_absolute_path_without_parent_dir(path: &str) -> Result<&Path, String> {
+    let p = Path::new(path);
+    if !p.is_absolute() {
+        return Err("절대 경로만 허용됩니다.".to_string());
+    }
+    for component in p.components() {
+        if component == Component::ParentDir {
+            return Err("경로에 '..'이 포함될 수 없습니다.".to_string());
+        }
+    }
+    Ok(p)
+}
+
+pub fn validate_existing_path(path: &str, not_found_message: &str) -> Result<(), String> {
+    let p = validate_absolute_path_without_parent_dir(path)?;
+    p.canonicalize()
+        .map_err(|_| not_found_message.to_string())?;
+    Ok(())
+}
+
+pub fn validate_parent_dir_path(path: &str, missing_parent_message: &str) -> Result<(), String> {
+    let p = validate_absolute_path_without_parent_dir(path)?;
+    p.parent()
+        .ok_or_else(|| "유효하지 않은 경로입니다.".to_string())?
+        .canonicalize()
+        .map_err(|_| missing_parent_message.to_string())?;
+    Ok(())
+}
 
 pub fn hash_content(content: &str) -> u64 {
     let mut hasher = DefaultHasher::new();

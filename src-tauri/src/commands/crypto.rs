@@ -6,6 +6,7 @@ use crate::state::{
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use rusqlite::Connection;
 use tauri::State;
+use zeroize::Zeroizing;
 
 const VERIFY_PLAINTEXT: &str = "school-record-verify";
 const KEY_ENCRYPTION_ENABLED: &str = "encryption_enabled";
@@ -279,6 +280,7 @@ pub fn unlock_encryption(
     db: State<DbState>,
     crypto: State<CryptoStateHandle>,
 ) -> Result<(), String> {
+    let password = Zeroizing::new(password);
     let guard = db.0.lock().map_err(|e| e.to_string())?;
     unlock_encryption_impl(db_conn(&guard)?, &crypto, &password)
 }
@@ -289,6 +291,7 @@ pub fn enable_encryption(
     db: State<DbState>,
     crypto: State<CryptoStateHandle>,
 ) -> Result<(), String> {
+    let password = Zeroizing::new(password);
     let guard = db.0.lock().map_err(|e| e.to_string())?;
     enable_encryption_impl(db_conn(&guard)?, &crypto, &password)
 }
@@ -309,6 +312,8 @@ pub fn change_encryption_password(
     db: State<DbState>,
     crypto: State<CryptoStateHandle>,
 ) -> Result<(), String> {
+    let old_password = Zeroizing::new(old_password);
+    let new_password = Zeroizing::new(new_password);
     let guard = db.0.lock().map_err(|e| e.to_string())?;
     change_encryption_password_impl(db_conn(&guard)?, &crypto, &old_password, &new_password)
 }

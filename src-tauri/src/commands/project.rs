@@ -1,3 +1,4 @@
+use crate::engine::{validate_existing_path, validate_parent_dir_path};
 use crate::state::{clear_crypto_state, CryptoStateHandle, DbState};
 use tauri::State;
 
@@ -6,6 +7,7 @@ pub(crate) fn new_project_impl(
     state: &DbState,
     crypto: &CryptoStateHandle,
 ) -> Result<(), String> {
+    validate_parent_dir_path(path, "디렉토리가 존재하지 않습니다.")?;
     let p = std::path::Path::new(&path);
     if p.exists() {
         return Err(format!("이미 파일이 존재합니다: {path}"));
@@ -21,6 +23,7 @@ pub(crate) fn open_project_impl(
     state: &DbState,
     crypto: &CryptoStateHandle,
 ) -> Result<(), String> {
+    validate_existing_path(path, "파일이 존재하지 않거나 접근할 수 없습니다.")?;
     let src = std::path::Path::new(&path);
 
     if let Some(parent) = src.parent() {

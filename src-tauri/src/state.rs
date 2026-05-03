@@ -1,9 +1,11 @@
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 pub struct DbState(pub Mutex<Option<Connection>>);
 
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct CryptoState {
     pub key: Option<[u8; 32]>,
     pub salt: Option<Vec<u8>>,
@@ -29,6 +31,8 @@ pub fn set_crypto_state(
 
 pub fn clear_crypto_state(crypto: &CryptoStateHandle) -> Result<(), String> {
     let mut guard = crypto.lock().map_err(|e| e.to_string())?;
+    if let Some(ref mut k) = guard.key { k.zeroize(); }
+    if let Some(ref mut s) = guard.salt { s.zeroize(); }
     guard.key = None;
     guard.salt = None;
     Ok(())
