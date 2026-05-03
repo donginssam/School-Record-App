@@ -1,9 +1,13 @@
-use crate::state::{DbState, unique_err};
+use crate::crypto::{maybe_decrypt, maybe_encrypt};
+use crate::state::{unique_err, CryptoStateHandle, DbState};
 use crate::types::{BulkUpsertResult, StudentInput, StudentItem};
 use rusqlite::Connection;
 use tauri::State;
 
-pub fn get_students_impl(conn: &Connection) -> Result<Vec<StudentItem>, String> {
+pub fn get_students_impl(
+    conn: &Connection,
+    key: Option<[u8; 32]>,
+) -> Result<Vec<StudentItem>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT id, grade, class_num, number, name
@@ -12,20 +16,30 @@ pub fn get_students_impl(conn: &Connection) -> Result<Vec<StudentItem>, String> 
         )
         .map_err(|e| e.to_string())?;
 
-    let students = stmt
+    let rows = stmt
         .query_map([], |row| {
-            Ok(StudentItem {
-                id: row.get(0)?,
-                grade: row.get(1)?,
-                class_num: row.get(2)?,
-                number: row.get(3)?,
-                name: row.get(4)?,
-            })
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, String>(4)?,
+            ))
         })
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
 
+    let mut students = Vec::with_capacity(rows.len());
+    for (id, grade, class_num, number, name) in rows {
+        students.push(StudentItem {
+            id,
+            grade,
+            class_num,
+            number,
+            name: maybe_decrypt(name, key)?,
+        });
+    }
     Ok(students)
 }
 
@@ -35,13 +49,16 @@ pub fn create_student_impl(
     class_num: i64,
     number: i64,
     name: &str,
+    key: Option<[u8; 32]>,
 ) -> Result<i64, String> {
+    let stored_name = maybe_encrypt(name, key)?;
     conn.execute(
         "INSERT INTO Student (grade, class_num, number, name) VALUES (?1, ?2, ?3, ?4)",
-        rusqlite::params![grade, class_num, number, name],
+        rusqlite::params![grade, class_num, number, stored_name],
     )
-    .map_err(|e| unique_err(&e, &format!("이미 같은 학번의 학생이 있습니다: {grade}학년 {class_num}반 {number}번")))?;
-
+    .map_err(|e| {
+        unique_err(&e, &format!("이미 같은 학번의 학생이 있습니다: {grade}학년 {class_num}반 {number}번"))
+    })?;
     Ok(conn.last_insert_rowid())
 }
 
@@ -52,36 +69,40 @@ pub fn update_student_impl(
     class_num: i64,
     number: i64,
     name: &str,
+    key: Option<[u8; 32]>,
 ) -> Result<(), String> {
+    let stored_name = maybe_encrypt(name, key)?;
     conn.execute(
         "UPDATE Student SET grade = ?1, class_num = ?2, number = ?3, name = ?4 WHERE id = ?5",
-        rusqlite::params![grade, class_num, number, name, id],
+        rusqlite::params![grade, class_num, number, stored_name, id],
     )
-    .map_err(|e| unique_err(&e, &format!("이미 같은 학번의 학생이 있습니다: {grade}학년 {class_num}반 {number}번")))?;
-
+    .map_err(|e| {
+        unique_err(&e, &format!("이미 같은 학번의 학생이 있습니다: {grade}학년 {class_num}반 {number}번"))
+    })?;
     Ok(())
 }
 
 pub fn delete_student_impl(conn: &Connection, id: i64) -> Result<(), String> {
     conn.execute("DELETE FROM Student WHERE id = ?1", rusqlite::params![id])
         .map_err(|e| e.to_string())?;
-
     Ok(())
 }
 
 pub fn bulk_upsert_students_impl(
     conn: &Connection,
     students: &[StudentInput],
+    key: Option<[u8; 32]>,
 ) -> Result<BulkUpsertResult, String> {
     conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
     let result = (|| -> Result<BulkUpsertResult, String> {
         let mut inserted: i64 = 0;
         let mut updated: i64 = 0;
         for s in students.iter() {
+            let stored_name = maybe_encrypt(&s.name, key)?;
             conn.execute(
                 "INSERT OR IGNORE INTO Student (grade, class_num, number, name)
                  VALUES (?1, ?2, ?3, ?4)",
-                rusqlite::params![s.grade, s.class_num, s.number, s.name],
+                rusqlite::params![s.grade, s.class_num, s.number, stored_name],
             )
             .map_err(|e| e.to_string())?;
 
@@ -90,7 +111,7 @@ pub fn bulk_upsert_students_impl(
             } else {
                 conn.execute(
                     "UPDATE Student SET name = ?1 WHERE grade=?2 AND class_num=?3 AND number=?4",
-                    rusqlite::params![s.name, s.grade, s.class_num, s.number],
+                    rusqlite::params![stored_name, s.grade, s.class_num, s.number],
                 )
                 .map_err(|e| e.to_string())?;
                 updated += 1;
@@ -188,13 +209,19 @@ pub fn set_area_activities_impl(
 
 // ── Tauri 커맨드 (얇은 래퍼) ─────────────────────────────────
 
+fn extract_key(crypto: &State<CryptoStateHandle>) -> Option<[u8; 32]> {
+    crypto.lock().ok().and_then(|g| g.key)
+}
+
 #[tauri::command]
-pub fn get_students(state: State<DbState>) -> Result<Vec<StudentItem>, String> {
+pub fn get_students(
+    state: State<DbState>,
+    crypto: State<CryptoStateHandle>,
+) -> Result<Vec<StudentItem>, String> {
+    let key = extract_key(&crypto);
     let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-    get_students_impl(conn)
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    get_students_impl(conn, key)
 }
 
 #[tauri::command]
@@ -204,12 +231,12 @@ pub fn create_student(
     number: i64,
     name: String,
     state: State<DbState>,
+    crypto: State<CryptoStateHandle>,
 ) -> Result<i64, String> {
+    let key = extract_key(&crypto);
     let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-    create_student_impl(conn, grade, class_num, number, &name)
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    create_student_impl(conn, grade, class_num, number, &name, key)
 }
 
 #[tauri::command]
@@ -220,20 +247,18 @@ pub fn update_student(
     number: i64,
     name: String,
     state: State<DbState>,
+    crypto: State<CryptoStateHandle>,
 ) -> Result<(), String> {
+    let key = extract_key(&crypto);
     let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-    update_student_impl(conn, id, grade, class_num, number, &name)
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    update_student_impl(conn, id, grade, class_num, number, &name, key)
 }
 
 #[tauri::command]
 pub fn delete_student(id: i64, state: State<DbState>) -> Result<(), String> {
     let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
     delete_student_impl(conn, id)
 }
 
@@ -244,9 +269,7 @@ pub fn set_area_activities(
     state: State<DbState>,
 ) -> Result<(), String> {
     let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
     set_area_activities_impl(conn, area_id, &activity_ids)
 }
 
@@ -254,20 +277,18 @@ pub fn set_area_activities(
 pub fn bulk_upsert_students(
     students: Vec<StudentInput>,
     state: State<DbState>,
+    crypto: State<CryptoStateHandle>,
 ) -> Result<BulkUpsertResult, String> {
+    let key = extract_key(&crypto);
     let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-    bulk_upsert_students_impl(conn, &students)
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    bulk_upsert_students_impl(conn, &students, key)
 }
 
 #[tauri::command]
 pub fn get_area_students(area_id: i64, state: State<DbState>) -> Result<Vec<i64>, String> {
     let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
     get_area_students_impl(conn, area_id)
 }
 
@@ -278,8 +299,6 @@ pub fn set_area_students(
     state: State<DbState>,
 ) -> Result<(), String> {
     let guard = state.0.lock().unwrap();
-    let conn = guard
-        .as_ref()
-        .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
+    let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
     set_area_students_impl(conn, area_id, &student_ids)
 }

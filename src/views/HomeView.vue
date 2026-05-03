@@ -6,9 +6,12 @@ import {open, save} from '@tauri-apps/plugin-dialog'
 import {getVersion} from '@tauri-apps/api/app'
 import {openUrl} from '@tauri-apps/plugin-opener'
 import {useProjectStore} from '../stores/project'
+import {useConfigStore} from '../stores/configStore'
+import PasswordModal from '../components/PasswordModal.vue'
 
 const router = useRouter()
 const project = useProjectStore()
+const config = useConfigStore()
 const error = ref('')
 
 const currentVersion = ref('')
@@ -16,6 +19,11 @@ const showUpdateModal = ref(false)
 const updateStatus = ref('idle') // 'idle' | 'checking' | 'latest' | 'found' | 'error'
 const latestVersion = ref('')
 const releaseUrl = ref('')
+
+const showPasswordModal = ref(false)
+const passwordError = ref('')
+const passwordLoading = ref(false)
+let pendingPath = ''
 
 onMounted(async () => {
   currentVersion.value = await getVersion()
@@ -49,10 +57,37 @@ async function handleOpen() {
   try {
     await invoke('open_project', {path})
     project.setProject(path)
-    router.push('/workspace')
+    const status = await invoke('get_encryption_status')
+    if (status.enabled) {
+      pendingPath = path
+      passwordError.value = ''
+      showPasswordModal.value = true
+    } else {
+      router.push('/workspace')
+    }
   } catch (e) {
     error.value = String(e)
   }
+}
+
+async function handlePasswordSubmit({password}) {
+  passwordError.value = ''
+  passwordLoading.value = true
+  try {
+    await config.unlockEncryption(password)
+    showPasswordModal.value = false
+    router.push('/workspace')
+  } catch (e) {
+    passwordError.value = String(e)
+  } finally {
+    passwordLoading.value = false
+  }
+}
+
+function handlePasswordCancel() {
+  showPasswordModal.value = false
+  project.closeProject()
+  pendingPath = ''
 }
 
 async function checkUpdate() {
@@ -180,6 +215,16 @@ function closeUpdateModal() {
         </p>
       </div>
     </div>
+
+    <!-- 비밀번호 모달 -->
+    <PasswordModal
+        v-if="showPasswordModal"
+        mode="unlock"
+        :error="passwordError"
+        :loading="passwordLoading"
+        @submit="handlePasswordSubmit"
+        @cancel="handlePasswordCancel"
+    />
 
     <!-- 업데이트 모달 -->
     <transition name="modal">

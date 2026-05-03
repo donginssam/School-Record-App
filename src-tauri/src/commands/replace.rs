@@ -1,5 +1,6 @@
+use crate::crypto::maybe_encrypt;
 use crate::engine::{apply_rules_cached, detect_conflicts, fetch_rules_from_db, get_records_for_scope};
-use crate::state::{DbState, ReplaceCacheState};
+use crate::state::{CryptoStateHandle, DbState, ReplaceCacheState};
 use crate::types::{ReplaceApplyResult, ReplacePreviewItem, ReplaceRule};
 use regex::Regex;
 use rusqlite::Connection;
@@ -240,7 +241,10 @@ pub fn preview_replace(
     area_ids: Vec<i64>,
     state: State<DbState>,
     cache: State<ReplaceCacheState>,
+    crypto: State<CryptoStateHandle>,
 ) -> Result<Vec<ReplacePreviewItem>, String> {
+    let key = crypto.lock().ok().and_then(|g| g.key);
+
     let (rules, records, act_names, stu_names) = {
         let guard = state.0.lock().unwrap();
         let conn = guard
@@ -248,7 +252,8 @@ pub fn preview_replace(
             .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
 
         let rules = fetch_rules_from_db(conn)?;
-        let records = get_records_for_scope(conn, &scope_type, &area_ids)?;
+        // get_records_for_scope now returns decrypted content
+        let records = get_records_for_scope(conn, &scope_type, &area_ids, key)?;
 
         let mut act_names: HashMap<i64, String> = HashMap::new();
         let mut stu_names: HashMap<i64, String> = HashMap::new();
@@ -261,14 +266,22 @@ pub fn preview_replace(
                 )
                 .unwrap_or_else(|_| format!("활동#{}", rec.activity_id))
             });
-            stu_names.entry(rec.student_id).or_insert_with(|| {
-                conn.query_row(
-                    "SELECT name FROM Student WHERE id=?1",
-                    rusqlite::params![rec.student_id],
-                    |r| r.get(0),
-                )
-                .unwrap_or_else(|_| format!("학생#{}", rec.student_id))
-            });
+            if !stu_names.contains_key(&rec.student_id) {
+                let raw_name: String = conn
+                    .query_row(
+                        "SELECT name FROM Student WHERE id=?1",
+                        rusqlite::params![rec.student_id],
+                        |r| r.get(0),
+                    )
+                    .unwrap_or_else(|_| format!("학생#{}", rec.student_id));
+                let name = if let Some(k) = key {
+                    crate::crypto::decrypt(&raw_name, &k)
+                        .unwrap_or_else(|_| raw_name)
+                } else {
+                    raw_name
+                };
+                stu_names.insert(rec.student_id, name);
+            }
         }
         (rules, records, act_names, stu_names)
     };
@@ -303,19 +316,24 @@ pub fn apply_replace(
     area_ids: Vec<i64>,
     state: State<DbState>,
     cache: State<ReplaceCacheState>,
+    crypto: State<CryptoStateHandle>,
 ) -> Result<ReplaceApplyResult, String> {
+    let key = crypto.lock().ok().and_then(|g| g.key);
+
     let (rules, records) = {
         let guard = state.0.lock().unwrap();
         let conn = guard
             .as_ref()
             .ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
         let rules = fetch_rules_from_db(conn)?;
-        let records = get_records_for_scope(conn, &scope_type, &area_ids)?;
+        // get_records_for_scope returns decrypted content
+        let records = get_records_for_scope(conn, &scope_type, &area_ids, key)?;
         (rules, records)
     };
 
     let total_count = records.len() as i64;
 
+    // changes contains (activity_id, student_id, plain_new_content)
     let changes: Vec<(i64, i64, String)> = {
         let mut cache_guard = cache.lock().unwrap();
         records
@@ -343,14 +361,15 @@ pub fn apply_replace(
 
     conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
     let result: Result<(), String> = (|| {
-        for (activity_id, student_id, new_content) in &changes {
+        for (activity_id, student_id, plain_content) in &changes {
+            let stored = maybe_encrypt(plain_content, key)?;
             conn.execute(
                 "INSERT INTO ActivityRecord (activity_id, student_id, content, updated_at)
                  VALUES (?1, ?2, ?3, datetime('now'))
                  ON CONFLICT(activity_id, student_id) DO UPDATE SET
                    content = excluded.content,
                    updated_at = excluded.updated_at",
-                rusqlite::params![activity_id, student_id, new_content],
+                rusqlite::params![activity_id, student_id, stored],
             )
             .map_err(|e| e.to_string())?;
 

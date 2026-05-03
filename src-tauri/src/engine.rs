@@ -4,6 +4,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
+use crate::crypto::maybe_decrypt;
 use crate::state::ReplaceCache;
 use crate::types::{RecordCell, ReplaceRule};
 
@@ -103,15 +104,8 @@ pub fn get_records_for_scope(
     conn: &Connection,
     scope_type: &str,
     area_ids: &[i64],
+    key: Option<[u8; 32]>,
 ) -> Result<Vec<RecordCell>, String> {
-    let map_row = |row: &rusqlite::Row| {
-        Ok(RecordCell {
-            activity_id: row.get(0)?,
-            student_id:  row.get(1)?,
-            content:     row.get(2)?,
-        })
-    };
-
     match scope_type {
         "all" => {
             let mut stmt = conn
@@ -120,11 +114,22 @@ pub fn get_records_for_scope(
                      FROM ActivityRecord WHERE content != ''",
                 )
                 .map_err(|e| e.to_string())?;
-            let result = stmt.query_map([], map_row)
+            let raw = stmt
+                .query_map([], |row| {
+                    Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, String>(2)?))
+                })
                 .map_err(|e| e.to_string())?
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| e.to_string());
-            result
+                .map_err(|e| e.to_string())?;
+            let mut result = Vec::with_capacity(raw.len());
+            for (activity_id, student_id, content) in raw {
+                result.push(RecordCell {
+                    activity_id,
+                    student_id,
+                    content: maybe_decrypt(content, key)?,
+                });
+            }
+            Ok(result)
         }
         "areas" => {
             if area_ids.is_empty() {
@@ -139,11 +144,22 @@ pub fn get_records_for_scope(
                  GROUP BY ar.activity_id, ar.student_id"
             );
             let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
-            let result = stmt.query_map(rusqlite::params_from_iter(area_ids.iter()), map_row)
+            let raw = stmt
+                .query_map(rusqlite::params_from_iter(area_ids.iter()), |row| {
+                    Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, String>(2)?))
+                })
                 .map_err(|e| e.to_string())?
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| e.to_string());
-            result
+                .map_err(|e| e.to_string())?;
+            let mut result = Vec::with_capacity(raw.len());
+            for (activity_id, student_id, content) in raw {
+                result.push(RecordCell {
+                    activity_id,
+                    student_id,
+                    content: maybe_decrypt(content, key)?,
+                });
+            }
+            Ok(result)
         }
         _ => Err(format!("알 수 없는 scope_type: {scope_type}")),
     }

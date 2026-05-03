@@ -4,6 +4,13 @@ use std::sync::Mutex;
 
 pub struct DbState(pub Mutex<Option<Connection>>);
 
+pub struct CryptoState {
+    pub key: Option<[u8; 32]>,
+    pub salt: Option<Vec<u8>>,
+}
+
+pub type CryptoStateHandle = Mutex<CryptoState>;
+
 pub struct ReplaceCache {
     pub ruleset_version: u64,
     pub entries: HashMap<u64, (String, u64)>,

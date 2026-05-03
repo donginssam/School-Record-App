@@ -1,4 +1,5 @@
-use crate::state::{DbState, unique_err};
+use crate::crypto::maybe_decrypt;
+use crate::state::{unique_err, CryptoStateHandle, DbState};
 use crate::types::{InspectRecord, SeedGroupInput, SynonymGroupFull, SynonymWordItem};
 use rusqlite::Connection;
 use std::collections::HashMap;
@@ -110,21 +111,23 @@ pub fn get_all_records_for_inspect_impl(
     conn: &Connection,
     scope_type: &str,
     area_ids: Vec<i64>,
+    key: Option<[u8; 32]>,
 ) -> Result<Vec<InspectRecord>, String> {
-    let map_row = |row: &rusqlite::Row| {
-        Ok(InspectRecord {
-            id:            row.get(0)?,
-            activity_name: row.get(1)?,
-            student_name:  row.get(2)?,
-            area_name:     row.get(3)?,
-            grade:         row.get(4)?,
-            class_num:     row.get(5)?,
-            number:        row.get(6)?,
-            content:       row.get(7)?,
-        })
+    type RawRow = (i64, String, String, String, i64, i64, i64, String);
+    let map_row = |row: &rusqlite::Row| -> rusqlite::Result<RawRow> {
+        Ok((
+            row.get(0)?,
+            row.get(1)?,
+            row.get(2)?,
+            row.get(3)?,
+            row.get(4)?,
+            row.get(5)?,
+            row.get(6)?,
+            row.get(7)?,
+        ))
     };
 
-    match scope_type {
+    let raw: Vec<RawRow> = match scope_type {
         "all" => {
             let mut stmt = conn
                 .prepare(
@@ -140,8 +143,12 @@ pub fn get_all_records_for_inspect_impl(
                      ORDER BY a.id, act.id, s.grade, s.class_num, s.number",
                 )
                 .map_err(|e| e.to_string())?;
-            let rows = stmt.query_map([], map_row).map_err(|e| e.to_string())?;
-            rows.map(|r| r.map_err(|e| e.to_string())).collect()
+            let rows = stmt
+                .query_map([], map_row)
+                .map_err(|e| e.to_string())?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| e.to_string())?;
+            rows
         }
         "areas" => {
             if area_ids.is_empty() {
@@ -164,11 +171,28 @@ pub fn get_all_records_for_inspect_impl(
             let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
             let rows = stmt
                 .query_map(rusqlite::params_from_iter(area_ids.iter()), map_row)
+                .map_err(|e| e.to_string())?
+                .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| e.to_string())?;
-            rows.map(|r| r.map_err(|e| e.to_string())).collect()
+            rows
         }
-        _ => Err(format!("알 수 없는 scope_type: {scope_type}")),
+        _ => return Err(format!("알 수 없는 scope_type: {scope_type}")),
+    };
+
+    let mut result = Vec::with_capacity(raw.len());
+    for (id, activity_name, student_name, area_name, grade, class_num, number, content) in raw {
+        result.push(InspectRecord {
+            id,
+            activity_name,
+            student_name: maybe_decrypt(student_name, key)?,
+            area_name,
+            grade,
+            class_num,
+            number,
+            content: maybe_decrypt(content, key)?,
+        });
     }
+    Ok(result)
 }
 
 // ── Tauri 명령어 래퍼 ──────────────────────────────────────────
@@ -220,8 +244,10 @@ pub fn get_all_records_for_inspect(
     scope_type: String,
     area_ids: Vec<i64>,
     state: State<DbState>,
+    crypto: State<CryptoStateHandle>,
 ) -> Result<Vec<InspectRecord>, String> {
+    let key = crypto.lock().ok().and_then(|g| g.key);
     let guard = state.0.lock().unwrap();
     let conn = guard.as_ref().ok_or_else(|| "DB가 열려있지 않습니다.".to_string())?;
-    get_all_records_for_inspect_impl(conn, &scope_type, area_ids)
+    get_all_records_for_inspect_impl(conn, &scope_type, area_ids, key)
 }
