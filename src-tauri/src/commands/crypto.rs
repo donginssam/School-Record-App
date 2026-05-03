@@ -1,7 +1,8 @@
 use crate::commands::config::{get_config_impl, set_config_impl};
 use crate::crypto::{decrypt, derive_key, encrypt, generate_salt};
 use crate::state::{
-    clear_crypto_state, current_crypto_key, set_crypto_state, CryptoStateHandle, DbState,
+    clear_crypto_state, current_crypto_key, set_crypto_state, CryptoStateHandle, DbPathState,
+    DbState,
 };
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use rusqlite::Connection;
@@ -186,14 +187,28 @@ pub(crate) fn unlock_encryption_impl(
     set_crypto_state(crypto, key, salt)
 }
 
+fn backup_db_file(db_path_state: &DbPathState, suffix: &str) -> Result<(), String> {
+    let guard = db_path_state.0.lock().map_err(|e| e.to_string())?;
+    let src = guard.as_ref().ok_or("열린 프로젝트가 없습니다.")?;
+    let parent = src.parent().ok_or("DB 파일의 상위 디렉토리를 찾을 수 없습니다.")?;
+    let stem = src.file_stem().and_then(|s| s.to_str()).unwrap_or("backup");
+    let ts = chrono::Local::now().format("%y%m%d-%H%M").to_string();
+    let bak_name = format!("{stem}.{ts}{suffix}.db.backup");
+    std::fs::copy(src, parent.join(bak_name)).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub(crate) fn enable_encryption_impl(
     conn: &Connection,
     crypto: &CryptoStateHandle,
+    db_path_state: &DbPathState,
     password: &str,
 ) -> Result<(), String> {
     if is_encryption_enabled(conn)? {
         return Err("이미 암호화가 활성화되어 있습니다.".to_string());
     }
+
+    backup_db_file(db_path_state, "-pre-encrypt")?;
 
     let salt = generate_salt();
     let key = derive_key(password, &salt);
@@ -214,8 +229,11 @@ pub(crate) fn enable_encryption_impl(
 pub(crate) fn disable_encryption_impl(
     conn: &Connection,
     crypto: &CryptoStateHandle,
+    db_path_state: &DbPathState,
 ) -> Result<(), String> {
     let key = resolve_data_key(conn, crypto)?.ok_or("암호화가 활성화되어 있지 않습니다.")?;
+
+    backup_db_file(db_path_state, "-pre-decrypt")?;
 
     run_transaction(conn, || {
         decrypt_all_data(conn, key)?;
@@ -289,20 +307,22 @@ pub fn unlock_encryption(
 pub fn enable_encryption(
     password: String,
     db: State<DbState>,
+    db_path: State<DbPathState>,
     crypto: State<CryptoStateHandle>,
 ) -> Result<(), String> {
     let password = Zeroizing::new(password);
     let guard = db.0.lock().map_err(|e| e.to_string())?;
-    enable_encryption_impl(db_conn(&guard)?, &crypto, &password)
+    enable_encryption_impl(db_conn(&guard)?, &crypto, &db_path, &password)
 }
 
 #[tauri::command]
 pub fn disable_encryption(
     db: State<DbState>,
+    db_path: State<DbPathState>,
     crypto: State<CryptoStateHandle>,
 ) -> Result<(), String> {
     let guard = db.0.lock().map_err(|e| e.to_string())?;
-    disable_encryption_impl(db_conn(&guard)?, &crypto)
+    disable_encryption_impl(db_conn(&guard)?, &crypto, &db_path)
 }
 
 #[tauri::command]

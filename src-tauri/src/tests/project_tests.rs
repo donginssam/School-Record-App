@@ -1,5 +1,5 @@
 use crate::commands::project::{new_project_impl, open_project_impl};
-use crate::state::{current_crypto_key, CryptoState, CryptoStateHandle, DbState};
+use crate::state::{current_crypto_key, CryptoState, CryptoStateHandle, DbPathState, DbState};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -29,9 +29,10 @@ fn test_new_project_clears_crypto_state() {
     std::fs::create_dir(&dir).unwrap();
     let path = dir.join("new.db");
     let db = DbState(Mutex::new(None));
+    let db_path = DbPathState(Mutex::new(None));
     let crypto = crypto_state_with_key();
 
-    new_project_impl(path.to_str().unwrap(), &db, &crypto).unwrap();
+    new_project_impl(path.to_str().unwrap(), &db, &db_path, &crypto).unwrap();
 
     assert!(db.0.lock().unwrap().is_some());
     assert!(current_crypto_key(&crypto).unwrap().is_none());
@@ -48,9 +49,10 @@ fn test_open_project_clears_crypto_state() {
     drop(crate::db::create_new(&path).unwrap());
 
     let db = DbState(Mutex::new(None));
+    let db_path = DbPathState(Mutex::new(None));
     let crypto = crypto_state_with_key();
 
-    open_project_impl(path.to_str().unwrap(), &db, &crypto).unwrap();
+    open_project_impl(path.to_str().unwrap(), &db, &db_path, &crypto).unwrap();
 
     assert!(db.0.lock().unwrap().is_some());
     assert!(current_crypto_key(&crypto).unwrap().is_none());

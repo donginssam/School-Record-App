@@ -1,9 +1,11 @@
 use rusqlite::Connection;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Mutex;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 pub struct DbState(pub Mutex<Option<Connection>>);
+pub struct DbPathState(pub Mutex<Option<PathBuf>>);
 
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct CryptoState {

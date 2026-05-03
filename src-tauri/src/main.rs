@@ -11,7 +11,7 @@ mod types;
 mod tests;
 
 use commands::*;
-use state::{CryptoState, CryptoStateHandle, DbState, ReplaceCache};
+use state::{CryptoState, CryptoStateHandle, DbPathState, DbState, ReplaceCache};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -20,6 +20,7 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(DbState(Mutex::new(None)))
+        .manage(DbPathState(Mutex::new(None)))
         .manage(Mutex::new(ReplaceCache {
             ruleset_version: 0,
             entries: HashMap::new(),

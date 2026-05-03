@@ -1,4 +1,4 @@
-use super::{insert_activity, insert_area, insert_student, setup_test_db};
+use super::{insert_activity, insert_area, insert_student, setup_temp_db_path_state, setup_test_db};
 use crate::commands::config::set_config_impl;
 use crate::commands::crypto::{
     change_encryption_password_impl, disable_encryption_impl, enable_encryption_impl,
@@ -365,7 +365,8 @@ fn test_encrypt_then_decrypt_all_data_restores_plaintext() {
     upsert_record_impl(&conn, act_id, stu_id, "활동 기록", None).unwrap();
     save_snapshot_internal(&conn, act_id, stu_id, Some("before encryption")).unwrap();
 
-    enable_encryption_impl(&conn, &crypto, "password").unwrap();
+    let (db_path, tmp_dir) = setup_temp_db_path_state();
+    enable_encryption_impl(&conn, &crypto, &db_path, "password").unwrap();
     let status = get_encryption_status_impl(&conn, &crypto).unwrap();
     assert!(status.enabled);
     assert!(status.unlocked);
@@ -401,7 +402,8 @@ fn test_encrypt_then_decrypt_all_data_restores_plaintext() {
     assert_eq!(students[0].name, "홍길동");
 
     // 3. 복호화 후 None 키로 읽으면 평문이 나와야 한다
-    disable_encryption_impl(&conn, &crypto).unwrap();
+    disable_encryption_impl(&conn, &crypto, &db_path).unwrap();
+    std::fs::remove_dir_all(&tmp_dir).ok();
     let status = get_encryption_status_impl(&conn, &crypto).unwrap();
     assert!(!status.enabled);
     assert!(!status.unlocked);
@@ -434,8 +436,10 @@ fn test_change_password_requires_new_password_afterward() {
     let crypto = crypto_state(None);
     let stu_id = insert_student(&conn, 1, 1, 1, "홍길동");
 
-    enable_encryption_impl(&conn, &crypto, "old-password").unwrap();
+    let (db_path, tmp_dir) = setup_temp_db_path_state();
+    enable_encryption_impl(&conn, &crypto, &db_path, "old-password").unwrap();
     change_encryption_password_impl(&conn, &crypto, "old-password", "new-password").unwrap();
+    std::fs::remove_dir_all(&tmp_dir).ok();
 
     clear_crypto_state(&crypto).unwrap();
     assert!(unlock_encryption_impl(&conn, &crypto, "old-password").is_err());
