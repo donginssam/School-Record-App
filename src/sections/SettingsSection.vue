@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from 'vue'
-import { Shield, ShieldOff, KeyRound, AlertTriangle } from 'lucide-vue-next'
-import { useConfigStore } from '../stores/configStore'
+import {ref} from 'vue'
+import {AlertTriangle, KeyRound, Shield, ShieldOff} from 'lucide-vue-next'
+import {useConfigStore} from '../stores/configStore'
 import PasswordModal from '../components/PasswordModal.vue'
 
 const config = useConfigStore()
@@ -58,58 +58,64 @@ async function handlePasswordSubmit(payload) {
 </script>
 
 <template>
-  <div class="settings-section">
+  <div class="section">
     <div class="section-header">
-      <h2 class="section-title">설정(Settings)</h2>
-      <p class="section-desc">파일 및 보안 설정을 관리합니다.</p>
+      <div>
+        <h2 class="section-title">설정(Settings)</h2>
+        <p class="section-desc">파일 및 보안 설정을 관리합니다.</p>
+      </div>
     </div>
 
-    <!-- 암호화 설정 카드 -->
-    <div class="settings-card">
-      <div class="card-header">
-        <div class="card-icon" :class="config.encryptionEnabled ? 'icon-enabled' : 'icon-disabled'">
-          <Shield v-if="config.encryptionEnabled" :size="20"/>
-          <ShieldOff v-else :size="20"/>
-        </div>
-        <div>
-          <h3 class="card-title">데이터 암호화</h3>
-          <p class="card-desc">학생 이름과 생기부 내용을 암호화합니다.</p>
-        </div>
-        <div class="card-badge" :class="config.encryptionEnabled ? 'badge-on' : 'badge-off'">
-          {{ config.encryptionEnabled ? '활성화' : '비활성화' }}
-        </div>
-      </div>
+    <div class="section-body">
 
-      <!-- 경고 문구 -->
-      <div class="warning-box">
-        <AlertTriangle :size="14" class="warning-icon"/>
-        <span>암호화 활성화 시 비밀번호를 분실하면 데이터를 복구할 수 없습니다.</span>
-      </div>
+      <!-- 암호화 설정 카드 -->
+      <div class="settings-card">
+        <div class="card-header">
+          <div class="card-icon" :class="config.encryptionEnabled ? 'icon-enabled' : 'icon-disabled'">
+            <Shield v-if="config.encryptionEnabled" :size="20"/>
+            <ShieldOff v-else :size="20"/>
+          </div>
+          <div>
+            <h3 class="card-title">데이터 암호화</h3>
+            <p class="card-desc">학생 이름과 생기부 내용을 암호화합니다.</p>
+          </div>
+          <div class="card-badge" :class="config.encryptionEnabled ? 'badge-on' : 'badge-off'">
+            {{ config.encryptionEnabled ? '활성화' : '비활성화' }}
+          </div>
+        </div>
 
-      <!-- 버튼 -->
-      <div class="card-actions">
-        <button v-if="!config.encryptionEnabled" class="btn-enable" @click="openSetup">
-          <Shield :size="16"/>
-          암호화 활성화
-        </button>
-        <template v-else>
-          <button class="btn-change" @click="openChange">
-            <KeyRound :size="16"/>
-            비밀번호 변경
+        <!-- 경고 문구 -->
+        <div class="warning-box">
+          <AlertTriangle :size="14" class="warning-icon"/>
+          <span>암호화 활성화 시 비밀번호를 분실하면 데이터를 복구할 수 없습니다.</span>
+        </div>
+
+        <!-- 버튼 -->
+        <div class="card-actions">
+          <button v-if="!config.encryptionEnabled" class="btn-enable" @click="openSetup">
+            <Shield :size="16"/>
+            암호화 활성화
           </button>
-          <button class="btn-disable" @click="handleDisable">
-            <ShieldOff :size="16"/>
-            암호화 비활성화
-          </button>
-        </template>
-      </div>
+          <template v-else>
+            <button class="btn-change" @click="openChange">
+              <KeyRound :size="16"/>
+              비밀번호 변경
+            </button>
+            <button class="btn-disable" @click="handleDisable">
+              <ShieldOff :size="16"/>
+              암호화 비활성화
+            </button>
+          </template>
+        </div>
 
-      <!-- 상태 메시지 -->
-      <transition name="fade">
-        <p v-if="statusMessage" class="status-msg" :class="statusMessage.startsWith('오류') ? 'status-error' : 'status-ok'">
-          {{ statusMessage }}
-        </p>
-      </transition>
+        <!-- 상태 메시지 -->
+        <transition name="fade">
+          <p v-if="statusMessage" class="status-msg"
+             :class="statusMessage.startsWith('오류') ? 'status-error' : 'status-ok'">
+            {{ statusMessage }}
+          </p>
+        </transition>
+      </div>
     </div>
 
     <!-- 비밀번호 모달 -->
@@ -125,13 +131,28 @@ async function handlePasswordSubmit(payload) {
 </template>
 
 <style scoped>
-.settings-section {
-  padding: 32px;
-  max-width: 720px;
+.section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.section-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px 48px;
 }
 
 .section-header {
-  margin-bottom: 28px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 36px 40px;
+  border-bottom: 1px solid #1a2035;
+  flex-shrink: 0;
+  gap: 16px;
 }
 
 .section-title {
@@ -142,8 +163,8 @@ async function handlePasswordSubmit(payload) {
 }
 
 .section-desc {
-  font-size: 15px;
-  color: var(--clr-text-hint);
+  font-size: 16px;
+  color: #7ba3d4;
   margin: 0;
 }
 
@@ -297,9 +318,19 @@ async function handlePasswordSubmit(payload) {
   font-weight: 500;
 }
 
-.status-ok { color: #34d399; }
-.status-error { color: #fca5a5; }
+.status-ok {
+  color: #34d399;
+}
 
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.status-error {
+  color: #fca5a5;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
 </style>
