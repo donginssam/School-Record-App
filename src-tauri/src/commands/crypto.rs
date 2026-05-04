@@ -251,6 +251,7 @@ pub(crate) fn disable_encryption_impl(
 pub(crate) fn change_encryption_password_impl(
     conn: &Connection,
     crypto: &CryptoStateHandle,
+    db_path_state: &DbPathState,
     old_password: &str,
     new_password: &str,
 ) -> Result<(), String> {
@@ -261,6 +262,9 @@ pub(crate) fn change_encryption_password_impl(
         &verify_token,
         "현재 비밀번호가 올바르지 않습니다.",
     )?;
+
+    backup_db_file(db_path_state, "-pre-reencrypt")?;
+
     let new_salt = generate_salt();
     let new_key = derive_key(new_password, &new_salt);
     let new_salt_b64 = B64.encode(new_salt);
@@ -330,10 +334,11 @@ pub fn change_encryption_password(
     old_password: String,
     new_password: String,
     db: State<DbState>,
+    db_path: State<DbPathState>,
     crypto: State<CryptoStateHandle>,
 ) -> Result<(), String> {
     let old_password = Zeroizing::new(old_password);
     let new_password = Zeroizing::new(new_password);
     let guard = db.0.lock().map_err(|e| e.to_string())?;
-    change_encryption_password_impl(db_conn(&guard)?, &crypto, &old_password, &new_password)
+    change_encryption_password_impl(db_conn(&guard)?, &crypto, &db_path, &old_password, &new_password)
 }

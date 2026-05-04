@@ -431,6 +431,27 @@ fn test_resolve_data_key_requires_unlock_when_enabled() {
 }
 
 #[test]
+fn test_change_password_creates_backup_file() {
+    let conn = setup_test_db();
+    let crypto = crypto_state(None);
+
+    let (db_path, tmp_dir) = setup_temp_db_path_state();
+    enable_encryption_impl(&conn, &crypto, &db_path, "password").unwrap();
+    change_encryption_password_impl(&conn, &crypto, &db_path, "password", "new-password").unwrap();
+
+    let backup_exists = std::fs::read_dir(&tmp_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .any(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .contains("-pre-reencrypt")
+        });
+    assert!(backup_exists, "비밀번호 변경 전 백업 파일이 생성되어야 한다");
+    std::fs::remove_dir_all(&tmp_dir).ok();
+}
+
+#[test]
 fn test_change_password_requires_new_password_afterward() {
     let conn = setup_test_db();
     let crypto = crypto_state(None);
@@ -438,7 +459,7 @@ fn test_change_password_requires_new_password_afterward() {
 
     let (db_path, tmp_dir) = setup_temp_db_path_state();
     enable_encryption_impl(&conn, &crypto, &db_path, "old-password").unwrap();
-    change_encryption_password_impl(&conn, &crypto, "old-password", "new-password").unwrap();
+    change_encryption_password_impl(&conn, &crypto, &db_path, "old-password", "new-password").unwrap();
     std::fs::remove_dir_all(&tmp_dir).ok();
 
     clear_crypto_state(&crypto).unwrap();
