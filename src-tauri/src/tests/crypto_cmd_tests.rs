@@ -5,15 +5,18 @@ use crate::commands::crypto::{
     get_encryption_status_impl, resolve_data_key, unlock_encryption_impl,
 };
 use crate::commands::record::{
-    get_area_grid_impl, get_record_history_impl, save_snapshot_internal, upsert_record_impl,
+    bulk_import_records_impl, get_area_grid_impl, get_record_history_impl,
+    preview_import_records_impl, save_snapshot_internal, upsert_record_impl,
 };
+use crate::commands::snapshot::{create_snapshot_impl, restore_snapshot_impl};
+use crate::commands::synonym::get_all_records_for_inspect_impl;
 use crate::commands::student::{
     bulk_upsert_students_impl, create_student_impl, get_students_impl, update_student_impl,
 };
 use crate::crypto::derive_key;
 use crate::engine::get_records_for_scope;
 use crate::state::{clear_crypto_state, CryptoState, CryptoStateHandle};
-use crate::types::StudentInput;
+use crate::types::{ImportRecordInput, StudentInput};
 
 fn test_key() -> [u8; 32] {
     derive_key("password", &[42u8; 16])
@@ -470,4 +473,213 @@ fn test_change_password_requires_new_password_afterward() {
     let students = get_students_impl(&conn, key).unwrap();
     assert_eq!(students[0].id, stu_id);
     assert_eq!(students[0].name, "홍길동");
+}
+
+// ── bulk_import_records: 암호화 경로 ─────────────────────────────
+
+fn make_import(
+    grade: i64,
+    class_num: i64,
+    number: i64,
+    name: Option<&str>,
+    activity_id: i64,
+    content: &str,
+) -> ImportRecordInput {
+    ImportRecordInput {
+        grade,
+        class_num,
+        number,
+        name: name.map(|s| s.to_string()),
+        activity_id,
+        content: content.to_string(),
+    }
+}
+
+#[test]
+fn test_bulk_import_records_with_key() {
+    let conn = setup_test_db();
+    let key = test_key();
+    let area_id = insert_area(&conn, "국어", 500);
+    let act_id = insert_activity(&conn, "발표");
+    conn.execute(
+        "INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, act_id],
+    )
+    .unwrap();
+
+    bulk_import_records_impl(
+        &conn,
+        &[make_import(1, 1, 1, Some("홍길동"), act_id, "발표 내용")],
+        Some(key),
+    )
+    .unwrap();
+
+    // DB에 이름과 content가 암호화된 채로 저장되어야 한다
+    let raw_name: String = conn
+        .query_row("SELECT name FROM Student WHERE grade=1", [], |r| r.get(0))
+        .unwrap();
+    assert_ne!(raw_name, "홍길동", "이름이 평문으로 저장되면 안 된다");
+    assert!(raw_name.contains(':'), "nonce:ciphertext 형식이어야 한다");
+
+    let raw_content: String = conn
+        .query_row(
+            "SELECT content FROM ActivityRecord WHERE activity_id=?1",
+            rusqlite::params![act_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_ne!(raw_content, "발표 내용", "content가 평문으로 저장되면 안 된다");
+    assert!(raw_content.contains(':'));
+
+    // Some(key)로 읽으면 복호화된 원문이 나와야 한다
+    conn.execute(
+        "INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, (SELECT id FROM Student WHERE grade=1))",
+        rusqlite::params![area_id],
+    )
+    .unwrap();
+    let grid = get_area_grid_impl(&conn, area_id, Some(key)).unwrap();
+    assert_eq!(grid.students[0].name, "홍길동");
+    assert_eq!(grid.records[0].content, "발표 내용");
+}
+
+#[test]
+fn test_bulk_import_records_with_key_existing_empty_name() {
+    let conn = setup_test_db();
+    let key = test_key();
+    let act_id = insert_activity(&conn, "발표");
+
+    // 이름이 빈 학생을 암호화 상태로 생성 (maybe_encrypt("", key) == "")
+    create_student_impl(&conn, 1, 1, 1, "", Some(key)).unwrap();
+
+    // bulk_import로 이름 갱신 시도
+    bulk_import_records_impl(
+        &conn,
+        &[make_import(1, 1, 1, Some("새이름"), act_id, "내용")],
+        Some(key),
+    )
+    .unwrap();
+
+    // 이름이 갱신되고, 암호화된 채로 저장 후 복호화 시 새이름이어야 한다
+    let students = get_students_impl(&conn, Some(key)).unwrap();
+    assert_eq!(students[0].name, "새이름", "빈 이름은 갱신되어야 한다");
+
+    // DB에는 암호화된 값이 있어야 한다
+    let raw_name: String = conn
+        .query_row("SELECT name FROM Student WHERE grade=1", [], |r| r.get(0))
+        .unwrap();
+    assert_ne!(raw_name, "새이름");
+    assert!(raw_name.contains(':'));
+}
+
+// ── preview_import_records: 암호화 경로 ──────────────────────────
+
+#[test]
+fn test_preview_import_records_with_key() {
+    let conn = setup_test_db();
+    let key = test_key();
+    let act_id = insert_activity(&conn, "발표");
+    let stu_id = create_student_impl(&conn, 1, 1, 1, "홍길동", Some(key)).unwrap();
+    upsert_record_impl(&conn, act_id, stu_id, "기존 내용", Some(key)).unwrap();
+
+    let items = preview_import_records_impl(
+        &conn,
+        &[make_import(1, 1, 1, Some("홍길동"), act_id, "새 내용")],
+        Some(key),
+    )
+    .unwrap();
+
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].student_name, "홍길동", "이름이 복호화되어야 한다");
+    assert_eq!(items[0].existing_content, "기존 내용", "기존 content가 복호화되어야 한다");
+    assert_eq!(items[0].new_content, "새 내용");
+}
+
+// ── get_all_records_for_inspect: 암호화 경로 ─────────────────────
+
+#[test]
+fn test_get_all_records_for_inspect_with_key_all_scope() {
+    let conn = setup_test_db();
+    let key = test_key();
+    let act_id = insert_activity(&conn, "발표");
+    let stu_id = create_student_impl(&conn, 1, 1, 1, "홍길동", Some(key)).unwrap();
+    upsert_record_impl(&conn, act_id, stu_id, "발표 평가 내용", Some(key)).unwrap();
+
+    // Some(key)로 조회 → 복호화된 원문
+    let records = get_all_records_for_inspect_impl(&conn, "all", vec![], Some(key)).unwrap();
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].student_name, "홍길동");
+    assert_eq!(records[0].content, "발표 평가 내용");
+
+    // None으로 조회 → 암호화된 raw 값
+    let records_raw = get_all_records_for_inspect_impl(&conn, "all", vec![], None).unwrap();
+    assert_eq!(records_raw.len(), 1);
+    assert_ne!(records_raw[0].student_name, "홍길동", "키 없이 조회하면 암호화된 이름이어야 한다");
+    assert_ne!(records_raw[0].content, "발표 평가 내용", "키 없이 조회하면 암호화된 content여야 한다");
+}
+
+#[test]
+fn test_get_all_records_for_inspect_with_key_areas_scope() {
+    let conn = setup_test_db();
+    let key = test_key();
+    let area_id = insert_area(&conn, "국어", 500);
+    let act_id = insert_activity(&conn, "독서");
+    let stu_id = create_student_impl(&conn, 1, 1, 1, "김철수", Some(key)).unwrap();
+    conn.execute(
+        "INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, act_id],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, stu_id],
+    )
+    .unwrap();
+    upsert_record_impl(&conn, act_id, stu_id, "독후감 내용", Some(key)).unwrap();
+
+    let records =
+        get_all_records_for_inspect_impl(&conn, "areas", vec![area_id], Some(key)).unwrap();
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].student_name, "김철수");
+    assert_eq!(records[0].content, "독후감 내용");
+    assert_eq!(records[0].area_name, "국어");
+}
+
+// ── snapshot restore: 암호화 경로 ────────────────────────────────
+
+#[test]
+fn test_restore_snapshot_with_encryption() {
+    let conn = setup_test_db();
+    let key = test_key();
+    let area_id = insert_area(&conn, "국어", 500);
+    let act_id = insert_activity(&conn, "독서");
+    let stu_id = create_student_impl(&conn, 1, 1, 1, "홍길동", Some(key)).unwrap();
+    conn.execute(
+        "INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, act_id],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, stu_id],
+    )
+    .unwrap();
+
+    // v1 내용 저장 후 스냅샷
+    upsert_record_impl(&conn, act_id, stu_id, "v1 내용", Some(key)).unwrap();
+    let snapshot = create_snapshot_impl(&conn, Some("v1 스냅샷".to_string())).unwrap();
+
+    // v2로 덮어쓰기
+    upsert_record_impl(&conn, act_id, stu_id, "v2 내용", Some(key)).unwrap();
+    let grid_v2 = get_area_grid_impl(&conn, area_id, Some(key)).unwrap();
+    assert_eq!(grid_v2.records[0].content, "v2 내용");
+
+    // 스냅샷 복원
+    restore_snapshot_impl(&conn, snapshot.id).unwrap();
+
+    // 복원 후 v1이 복호화되어 나와야 한다
+    let grid_restored = get_area_grid_impl(&conn, area_id, Some(key)).unwrap();
+    assert_eq!(
+        grid_restored.records[0].content, "v1 내용",
+        "스냅샷 복원 후 암호화된 v1 내용이 복호화되어야 한다"
+    );
 }
