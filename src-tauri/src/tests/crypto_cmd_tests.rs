@@ -1,4 +1,5 @@
 use super::{insert_activity, insert_area, insert_student, setup_temp_db_path_state, setup_test_db};
+use rusqlite::Connection;
 use crate::commands::config::set_config_impl;
 use crate::commands::crypto::{
     change_encryption_password_impl, disable_encryption_impl, enable_encryption_impl,
@@ -1019,4 +1020,135 @@ fn test_bulk_import_history_readable_with_key() {
         .unwrap();
     assert_ne!(raw_history, "발표 내용", "history DB에는 암호화된 값이 있어야 한다");
     assert!(raw_history.contains(':'));
+}
+
+// ── 파일 DB 재시작 시나리오 ───────────────────────────────────────────
+
+#[test]
+fn test_persist_and_reload_with_encryption() {
+    let (db_path_state, dir) = setup_temp_db_path_state();
+    let db_path = db_path_state.0.lock().unwrap().clone().unwrap();
+
+    // 1. 파일 DB 초기화 및 데이터 삽입
+    let conn = Connection::open(&db_path).unwrap();
+    conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+    conn.execute_batch(include_str!("../schema.sql")).unwrap();
+    let stu_id = insert_student(&conn, 1, 1, 1, "홍길동");
+    let area_id = insert_area(&conn, "독서", 500);
+    let act_id = insert_activity(&conn, "발표");
+    conn.execute(
+        "INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, act_id],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, stu_id],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO ActivityRecord (activity_id, student_id, content) VALUES (?1, ?2, ?3)",
+        rusqlite::params![act_id, stu_id, "홍길동 발표 내용"],
+    )
+    .unwrap();
+
+    // 2. 암호화 활성화
+    let crypto = crypto_state(None);
+    enable_encryption_impl(&conn, &crypto, &db_path_state, "password").unwrap();
+
+    // 3. Connection 닫기 (재시작 시뮬레이션)
+    drop(conn);
+
+    // 4. 새 Connection으로 재오픈 + 잠금 상태 CryptoState
+    let conn2 = Connection::open(&db_path).unwrap();
+    conn2.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+    let crypto2 = crypto_state(None);
+
+    // 5. 구 비밀번호로 unlock → 성공
+    unlock_encryption_impl(&conn2, &crypto2, "password").unwrap();
+    let key = resolve_data_key(&conn2, &crypto2).unwrap().unwrap();
+
+    // 6. 데이터 복호화 확인
+    let grid = get_area_grid_impl(&conn2, area_id, Some(key)).unwrap();
+    let student = grid.students.iter().find(|s| s.id == stu_id).unwrap();
+    assert_eq!(student.name, "홍길동", "재시작 후 학생 이름이 올바르게 복호화되어야 한다");
+
+    let record = grid
+        .records
+        .iter()
+        .find(|r| r.student_id == stu_id && r.activity_id == act_id)
+        .unwrap();
+    assert_eq!(record.content, "홍길동 발표 내용", "재시작 후 기록 내용이 올바르게 복호화되어야 한다");
+
+    drop(conn2);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn test_change_password_then_reload() {
+    let (db_path_state, dir) = setup_temp_db_path_state();
+    let db_path = db_path_state.0.lock().unwrap().clone().unwrap();
+
+    // 1. 파일 DB 초기화 및 암호화 활성화
+    let conn = Connection::open(&db_path).unwrap();
+    conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+    conn.execute_batch(include_str!("../schema.sql")).unwrap();
+    let stu_id = insert_student(&conn, 1, 1, 1, "김철수");
+    let area_id = insert_area(&conn, "수학", 500);
+    let act_id = insert_activity(&conn, "수행평가");
+    conn.execute(
+        "INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, act_id],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, stu_id],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO ActivityRecord (activity_id, student_id, content) VALUES (?1, ?2, ?3)",
+        rusqlite::params![act_id, stu_id, "수행평가 우수"],
+    )
+    .unwrap();
+
+    let crypto = crypto_state(None);
+    enable_encryption_impl(&conn, &crypto, &db_path_state, "password").unwrap();
+
+    // 2. 비밀번호 변경
+    change_encryption_password_impl(&conn, &crypto, &db_path_state, "password", "new-password")
+        .unwrap();
+
+    // 3. Connection 닫기 (재시작 시뮬레이션)
+    drop(conn);
+
+    // 4. 새 Connection으로 재오픈
+    let conn2 = Connection::open(&db_path).unwrap();
+    conn2.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+    let crypto2 = crypto_state(None);
+
+    // 5. 구 비밀번호로 unlock → 실패
+    assert!(
+        unlock_encryption_impl(&conn2, &crypto2, "password").is_err(),
+        "변경 전 비밀번호로는 unlock이 실패해야 한다"
+    );
+
+    // 6. 새 비밀번호로 unlock → 성공
+    unlock_encryption_impl(&conn2, &crypto2, "new-password").unwrap();
+    let key = resolve_data_key(&conn2, &crypto2).unwrap().unwrap();
+
+    // 7. 데이터 복호화 확인
+    let grid = get_area_grid_impl(&conn2, area_id, Some(key)).unwrap();
+    let student = grid.students.iter().find(|s| s.id == stu_id).unwrap();
+    assert_eq!(student.name, "김철수", "비밀번호 변경 후 학생 이름이 올바르게 복호화되어야 한다");
+
+    let record = grid
+        .records
+        .iter()
+        .find(|r| r.student_id == stu_id && r.activity_id == act_id)
+        .unwrap();
+    assert_eq!(record.content, "수행평가 우수", "비밀번호 변경 후 기록 내용이 올바르게 복호화되어야 한다");
+
+    drop(conn2);
+    std::fs::remove_dir_all(dir).unwrap();
 }
