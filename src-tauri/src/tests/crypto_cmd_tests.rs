@@ -1152,3 +1152,75 @@ fn test_change_password_then_reload() {
     drop(conn2);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+// ── 레거시 스냅샷 × 암호화 활성화 경계 테스트 ────────────────────────
+//
+// 실제 발생 가능한 시나리오:
+//   기존 버전(암호화 없음)에서 스냅샷을 생성한 뒤,
+//   신규 버전에서 암호화를 활성화하고 스냅샷을 복원하는 경우.
+//
+// 동작 근거:
+//   enable_encryption_impl이 ActivityRecordHistory.content도 암호화하므로,
+//   복원 시 history에서 읽히는 값은 암호화된 상태이고 get_area_grid_impl이
+//   키로 복호화하여 원래 평문을 반환한다.
+
+#[test]
+fn test_restore_plaintext_snapshot_after_encryption_enabled() {
+    let conn = setup_test_db();
+    let crypto = crypto_state(None);
+    let (db_path, tmp_dir) = setup_temp_db_path_state();
+
+    let area_id = insert_area(&conn, "국어", 500);
+    let act_id = insert_activity(&conn, "발표");
+    let stu_id = insert_student(&conn, 1, 1, 1, "홍길동");
+    conn.execute(
+        "INSERT INTO AreaActivity (area_id, activity_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, act_id],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO AreaStudent (area_id, student_id) VALUES (?1, ?2)",
+        rusqlite::params![area_id, stu_id],
+    )
+    .unwrap();
+
+    // 1. 암호화 없이 v1 기록 및 스냅샷 생성 (레거시 동작)
+    upsert_record_impl(&conn, act_id, stu_id, "v1 내용", None).unwrap();
+    let snapshot = create_snapshot_impl(&conn, Some("v1 스냅샷".to_string())).unwrap();
+
+    // 2. 암호화 없이 v2로 덮어쓰기
+    upsert_record_impl(&conn, act_id, stu_id, "v2 내용", None).unwrap();
+
+    // 3. 암호화 활성화
+    //    → ActivityRecord.content AND ActivityRecordHistory.content 모두 암호화됨
+    enable_encryption_impl(&conn, &crypto, &db_path, "password").unwrap();
+    let key = resolve_data_key(&conn, &crypto).unwrap().unwrap();
+
+    // 4. 암호화 상태에서 현재 값이 v2인지 확인
+    let grid = get_area_grid_impl(&conn, area_id, Some(key)).unwrap();
+    assert_eq!(grid.records[0].content, "v2 내용", "암호화 활성화 후 현재 값은 v2여야 한다");
+
+    // 5. 암호화 전 생성된 스냅샷으로 복원
+    //    restore_snapshot_impl은 암호화된 history에서 읽어 ActivityRecord에 복사
+    restore_snapshot_impl(&conn, snapshot.id).unwrap();
+
+    // 6. 복원 후 v1이 복호화되어 나와야 한다
+    let grid_restored = get_area_grid_impl(&conn, area_id, Some(key)).unwrap();
+    assert_eq!(
+        grid_restored.records[0].content, "v1 내용",
+        "암호화 전 스냅샷 복원 후에도 올바른 v1 평문이 반환되어야 한다"
+    );
+
+    // 7. DB에 암호화된 값이 저장되어 있어야 한다 (복원 후에도 암호화 유지)
+    let raw: String = conn
+        .query_row(
+            "SELECT content FROM ActivityRecord WHERE activity_id=?1 AND student_id=?2",
+            rusqlite::params![act_id, stu_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_ne!(raw, "v1 내용", "복원 후에도 DB에는 암호화된 값이 저장되어야 한다");
+    assert!(raw.contains(':'), "복원된 값이 nonce:ciphertext 형식이어야 한다");
+
+    std::fs::remove_dir_all(&tmp_dir).ok();
+}
